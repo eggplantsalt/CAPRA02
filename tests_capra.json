@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {"id": "capra_imports", "status": "passed"},
+    {"id": "env_adapter_roundtrip", "status": "passed"},
+    {"id": "state_api_signals", "status": "passed"},
+    {"id": "local_evaluator_v1", "status": "passed"},
+    {"id": "mining_v1_smoke", "status": "passed"},
+    {"id": "finetune_capra_smoke", "status": "passed"},
+    {"id": "metrics_v1", "status": "passed"},
+    {"id": "benchmark_adapters_v1", "status": "passed"}
+  ]
+}
