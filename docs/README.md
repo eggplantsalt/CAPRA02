@@ -5,13 +5,24 @@
 ## 当前目录结构
 
 - `docs/00_overview/`：工程导览与目录索引
-- `docs/01_quickstart/`：从零开始快速跑通（环境、最小验证）
-- `docs/02_dataset/`：数据集准备与 RLDS 规范
+	- `PROJECT_MAP.md`
+	- `DOCS_TREE_PLAN.md`
+- `docs/01_quickstart/`：从零开始快速跑通
+	- `QUICKSTART.md`
+- `docs/02_dataset/`：数据集准备与 RLDS/SafeLIBERO
+	- `DATASET_RLDS.md`
+	- `SAFELIBERO_GUIDE.md`
 - `docs/03_training/`：训练流程（Baseline 与 CAPRA）
-- `docs/04_evaluation/`：评测流程与结果解读
+	- `BASELINE_TRAINING.md`
+	- `CAPRA_TRAINING.md`
+	- `MULTI_GPU_DEEPSPEED.md`
+- `docs/04_evaluation/`：评测流程与指标解读
+	- `EVALUATION_GUIDE.md`
+	- `METRICS_EXPLAINED.md`
 - `docs/05_troubleshooting/`：常见问题与排障
-- `docs/90_reference/`：仍然有效的参考规范文档
-- `docs/99_archive/`：历史阶段性文档（仅归档，不作为最新操作手册）
+	- `TROUBLESHOOTING.md`
+- `docs/90_reference/`：有效参考文档
+- `docs/99_archive/`：历史阶段文档（仅归档）
 
 ## 文档使用约定
 

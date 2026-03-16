@@ -24,3 +24,29 @@
 
 - 新建 `docs/README.md`
   - 作用：提供重构后的文档目录入口与维护约定。
+
+## 2026-03-16（Step 3）
+
+### 重写
+
+- 重写 `docs/00_overview/PROJECT_MAP.md`
+  - 原因：从“草案状态”升级为“当前真实代码结构”导览，补齐真实入口命令。
+- 重写 `docs/README.md`
+  - 原因：补充完整文档索引，确保 00_overview 至 05_troubleshooting 可直接导航。
+
+### 新增
+
+- `docs/01_quickstart/QUICKSTART.md`
+- `docs/02_dataset/DATASET_RLDS.md`
+- `docs/02_dataset/SAFELIBERO_GUIDE.md`
+- `docs/03_training/BASELINE_TRAINING.md`
+- `docs/03_training/CAPRA_TRAINING.md`
+- `docs/03_training/MULTI_GPU_DEEPSPEED.md`
+- `docs/04_evaluation/EVALUATION_GUIDE.md`
+- `docs/04_evaluation/METRICS_EXPLAINED.md`
+- `docs/05_troubleshooting/TROUBLESHOOTING.md`
+
+说明：
+
+- 以上文档均基于当前真实代码入口与参数编写。
+- 每篇文档均提供可复制粘贴的命令模板（含 conda activate 与 cd）。

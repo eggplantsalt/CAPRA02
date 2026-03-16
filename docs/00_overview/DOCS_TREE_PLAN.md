@@ -26,3 +26,13 @@
 - 所有新文档 100% 中文。
 - 命令示例必须给出完整可复制版本。
 - 与代码不一致时，以代码为准并回写文档。
+
+## 快速核对命令
+
+```bash
+conda activate openvla-oft
+cd /path/to/openvla-oft
+
+# 查看当前 docs 目录树
+find docs -maxdepth 2 -type f | sort
+```

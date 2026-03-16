@@ -335,3 +335,29 @@ Static checks:
 Remaining risks/blockers:
 - Archived docs still contain old module/script paths by design for history traceability.
 - Need Step 3 to produce full beginner-facing Chinese manuals on top of new docs tree.
+
+## Phase 8 - Step3 Chinese Documentation System
+Status: completed
+
+Completed in this phase:
+- Filled complete Chinese docs set for 00_overview through 05_troubleshooting.
+- Added copy-paste command templates in each newly produced document, including:
+  - conda activate
+  - repo cd
+  - single-GPU templates
+  - multi-GPU templates
+  - DeepSpeed templates
+- Kept all commands aligned to real current entrypoints and real CLI parameters:
+  - vla-scripts/finetune.py
+  - vla-scripts/finetune_capra.py
+  - experiments/robot/libero/run_libero_eval.py
+  - experiments.robot.capra.pipelines.run_capra_mining
+  - experiments.robot.capra.pipelines.run_capra_eval
+  - scripts/capra/mine/*, scripts/capra/train/*, scripts/capra/eval/*
+- Added/updated docs index and changelog tracking.
+
+Tests run:
+- Not run in this phase (documentation-only updates under current environment policy).
+
+Remaining risks/blockers:
+- CAPRA training entry is currently overlay/tiny-loop oriented; docs already describe this boundary explicitly.

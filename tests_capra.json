@@ -9,6 +9,8 @@
     {"id": "metrics_v1", "status": "passed"},
     {"id": "benchmark_adapters_v1", "status": "passed"},
     {"id": "phase7_refactor_static_check", "status": "passed"},
-    {"id": "phase7_runtime_tests", "status": "not_run"}
+    {"id": "phase7_runtime_tests", "status": "not_run"},
+    {"id": "phase8_docs_consistency_review", "status": "passed"},
+    {"id": "phase8_runtime_tests", "status": "not_run"}
   ]
 }
