@@ -17,10 +17,10 @@ def test_capra_package_importable() -> None:
 
 def test_capra_placeholder_modules_importable() -> None:
     module_names = [
-        "experiments.robot.capra.env_adapter",
-        "experiments.robot.capra.state_api",
-        "experiments.robot.capra.local_evaluator",
-        "experiments.robot.capra.mining",
+           "experiments.robot.capra.adapters.env_adapter",
+           "experiments.robot.capra.adapters.state_api",
+           "experiments.robot.capra.core.local_evaluator",
+           "experiments.robot.capra.core.mining",
     ]
     for name in module_names:
         module = importlib.import_module(name)

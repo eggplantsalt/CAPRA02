@@ -10,7 +10,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from experiments.robot.capra.supervision_io import SupervisionRecord, write_supervision_jsonl
+from experiments.robot.capra.io.supervision_io import SupervisionRecord, write_supervision_jsonl
 
 
 def _load_finetune_capra_module():

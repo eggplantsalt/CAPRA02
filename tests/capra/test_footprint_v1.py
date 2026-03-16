@@ -12,8 +12,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from experiments.robot.capra.footprint import compute_footprint_v1
-from experiments.robot.capra.types import StateSignals
+from experiments.robot.capra.core.footprint import compute_footprint_v1
+from experiments.robot.capra.core.types import StateSignals
 
 
 def test_compute_footprint_v1_with_object_displacement_and_severe_flags() -> None:

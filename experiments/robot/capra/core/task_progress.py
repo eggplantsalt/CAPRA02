@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from experiments.robot.capra.types import ProgressFeaturesV1, StateSignals
+from experiments.robot.capra.core.types import ProgressFeaturesV1, StateSignals
 
 
 def _to_progress_score(target_dist: Optional[float], done: bool) -> Optional[float]:

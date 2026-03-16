@@ -10,11 +10,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from experiments.robot.capra.benchmark_adapters import (
+from experiments.robot.capra.adapters.benchmark_adapters import (
     get_libero_utility_eval_command,
     smoke_run_custom_split,
 )
-from experiments.robot.capra.run_capra_eval import run_capra_eval
+from experiments.robot.capra.pipelines.run_capra_eval import run_capra_eval
 
 
 def test_libero_utility_command_is_upstream_path() -> None:

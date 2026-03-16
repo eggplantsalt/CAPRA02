@@ -7,7 +7,7 @@ from typing import Any, Callable, Optional
 
 import numpy as np
 
-from experiments.robot.capra.types import EnvSnapshot
+from experiments.robot.capra.core.types import EnvSnapshot
 
 
 class EnvAdapter:

@@ -9,7 +9,7 @@ SAFETY_LEVEL="${5:-I}"
 CUSTOM_SPLIT="${6:-support-critical-neighbor}"
 SAFELIBERO_ROOT="${7:-vlsa-aegis/safelibero}"
 
-python -m experiments.robot.capra.run_capra_eval \
+python -m experiments.robot.capra.pipelines.run_capra_eval \
   --supervision_path "${SUPERVISION_PATH}" \
   --output_path "${OUTPUT_PATH}" \
   --benchmark_mode "${BENCHMARK_MODE}" \

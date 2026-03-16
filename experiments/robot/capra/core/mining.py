@@ -5,15 +5,15 @@ from typing import Any, Dict, Iterable, List, Optional
 
 import numpy as np
 
-from experiments.robot.capra.env_adapter import EnvAdapter
-from experiments.robot.capra.local_evaluator import evaluate_candidates_v1, summarise_candidate_results
-from experiments.robot.capra.proposals import ProposalConfig, build_local_proposals
-from experiments.robot.capra.supervision_io import SupervisionRecord
+from experiments.robot.capra.adapters.env_adapter import EnvAdapter
+from experiments.robot.capra.core.local_evaluator import evaluate_candidates_v1, summarise_candidate_results
+from experiments.robot.capra.core.proposals import ProposalConfig, build_local_proposals
+from experiments.robot.capra.io.supervision_io import SupervisionRecord
 
 
 @dataclass
 class MiningConfigV1:
-    """Config for local safer-candidate supervision mining."""
+    """CAPRA v1 挖掘配置。"""
 
     epsilon_p: float = 0.05
     delta_min: float = 1e-6
@@ -59,7 +59,7 @@ def mine_one_timestep_v1(
     observation_input: Optional[Dict[str, Any]] = None,
     info_before: Optional[Dict[str, Any]] = None,
 ) -> Optional[SupervisionRecord]:
-    """Mine one supervision record at one timestep if a safer candidate exists."""
+    """在单个时间步挖掘监督样本：仅当存在更安全候选且超过阈值时产出。"""
     config = cfg or MiningConfigV1()
     base_chunk = _to_chunk(base_action_chunk)
 
@@ -85,9 +85,11 @@ def mine_one_timestep_v1(
     base_eval = summary_obj.evaluations[summary_obj.base_index]
     safer_eval = summary_obj.evaluations[safer_index]
     delta = float(base_eval.footprint.total - safer_eval.footprint.total)
+    # Delta_t 不足阈值时跳过，避免引入噪声监督。
     if delta <= float(config.delta_min):
         return None
 
+    # v1 权重采用 clip(Delta_t, 0, w_max)。
     weight = float(np.clip(delta, 0.0, config.w_max))
 
     return SupervisionRecord(
@@ -119,7 +121,7 @@ def mine_episode_v1(
     cfg: Optional[MiningConfigV1] = None,
     episode_idx: int = 0,
 ) -> List[SupervisionRecord]:
-    """Mine supervision records across a small episode rollout."""
+    """遍历一个 episode 的多个时间步，收集所有有效 supervision。"""
     config = cfg or MiningConfigV1()
     records: List[SupervisionRecord] = []
 

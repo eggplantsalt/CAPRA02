@@ -7,6 +7,8 @@
     {"id": "mining_v1_smoke", "status": "passed"},
     {"id": "finetune_capra_smoke", "status": "passed"},
     {"id": "metrics_v1", "status": "passed"},
-    {"id": "benchmark_adapters_v1", "status": "passed"}
+    {"id": "benchmark_adapters_v1", "status": "passed"},
+    {"id": "phase7_refactor_static_check", "status": "passed"},
+    {"id": "phase7_runtime_tests", "status": "not_run"}
   ]
 }

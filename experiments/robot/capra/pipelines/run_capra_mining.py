@@ -8,9 +8,9 @@ from typing import Any, Dict, Iterable, List
 
 import numpy as np
 
-from experiments.robot.capra.env_adapter import EnvAdapter
-from experiments.robot.capra.mining import MiningConfigV1, mine_episode_v1
-from experiments.robot.capra.supervision_io import SupervisionRecord, write_supervision_jsonl
+from experiments.robot.capra.adapters.env_adapter import EnvAdapter
+from experiments.robot.capra.core.mining import MiningConfigV1, mine_episode_v1
+from experiments.robot.capra.io.supervision_io import SupervisionRecord, write_supervision_jsonl
 
 
 def run_capra_mining(

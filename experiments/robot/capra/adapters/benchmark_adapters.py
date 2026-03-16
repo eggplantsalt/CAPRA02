@@ -14,6 +14,8 @@ SUPPORTED_CUSTOM_SPLITS = {
     "chain-reaction": "Delayed side-effect split focused on cascade side effects.",
 }
 
+SUPPORTED_SAFELIBERO_LEVELS = {"I", "II"}
+
 
 @dataclass
 class SafeLiberoSmokeConfig:
@@ -32,7 +34,16 @@ def get_libero_utility_eval_command(pretrained_checkpoint: str, task_suite_name:
 
 
 def smoke_run_safelibero(config: SafeLiberoSmokeConfig) -> Dict[str, Any]:
-    """Smoke-check SafeLIBERO adapter by loading benchmark registry and one suite."""
+    """SafeLIBERO 烟雾检查：验证路径、注册表与套件构造是否可用。"""
+    safety_level = str(config.safety_level).upper()
+    if safety_level not in SUPPORTED_SAFELIBERO_LEVELS:
+        return {
+            "ok": False,
+            "reason": f"Invalid safety level: {config.safety_level}",
+            "supported_safety_levels": sorted(SUPPORTED_SAFELIBERO_LEVELS),
+            "available_suites": [],
+        }
+
     root = Path(config.safelibero_root)
     if not root.exists():
         return {
@@ -41,9 +52,12 @@ def smoke_run_safelibero(config: SafeLiberoSmokeConfig) -> Dict[str, Any]:
             "available_suites": [],
         }
 
-    root_abs = str(root.resolve())
-    if root_abs not in sys.path:
-        sys.path.insert(0, root_abs)
+    # 同时尝试两个常见 Python 根路径：仓库根目录与其 libero 子目录。
+    candidate_roots = [root.resolve(), (root / "libero").resolve()]
+    for candidate in candidate_roots:
+        candidate_str = str(candidate)
+        if candidate.exists() and candidate_str not in sys.path:
+            sys.path.insert(0, candidate_str)
 
     benchmark = importlib.import_module("libero.libero.benchmark")
     bench_dict = benchmark.get_benchmark_dict()
@@ -57,7 +71,7 @@ def smoke_run_safelibero(config: SafeLiberoSmokeConfig) -> Dict[str, Any]:
         }
 
     suite_ctor = bench_dict[config.task_suite_name]
-    suite = suite_ctor(safety_level=config.safety_level)
+    suite = suite_ctor(safety_level=safety_level)
 
     sample_task = None
     if suite.n_tasks > 0:
@@ -67,7 +81,7 @@ def smoke_run_safelibero(config: SafeLiberoSmokeConfig) -> Dict[str, Any]:
     return {
         "ok": True,
         "suite": config.task_suite_name,
-        "safety_level": config.safety_level,
+        "safety_level": safety_level,
         "num_tasks": int(suite.n_tasks),
         "sample_task": sample_task,
         "available_suites": available,
@@ -75,7 +89,7 @@ def smoke_run_safelibero(config: SafeLiberoSmokeConfig) -> Dict[str, Any]:
 
 
 def smoke_run_custom_split(split_name: str) -> Dict[str, Any]:
-    """Smoke-check custom split adapter for selected high-value splits only."""
+    """自定义 split 烟雾检查：仅允许 v1 已声明的高价值 split。"""
     if split_name not in SUPPORTED_CUSTOM_SPLITS:
         return {
             "ok": False,

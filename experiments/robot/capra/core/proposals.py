@@ -7,7 +7,7 @@ from typing import Iterable, List
 
 import numpy as np
 
-from experiments.robot.capra.types import ActionProposal
+from experiments.robot.capra.core.types import ActionProposal
 
 
 @dataclass

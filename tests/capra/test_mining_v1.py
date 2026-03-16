@@ -12,10 +12,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from experiments.robot.capra.env_adapter import EnvAdapter
-from experiments.robot.capra.mining import MiningConfigV1, mine_episode_v1, mine_one_timestep_v1
-from experiments.robot.capra.proposals import ProposalConfig
-from experiments.robot.capra.supervision_io import read_supervision_jsonl, write_supervision_jsonl
+from experiments.robot.capra.adapters.env_adapter import EnvAdapter
+from experiments.robot.capra.core.mining import MiningConfigV1, mine_episode_v1, mine_one_timestep_v1
+from experiments.robot.capra.core.proposals import ProposalConfig
+from experiments.robot.capra.io.supervision_io import read_supervision_jsonl, write_supervision_jsonl
 
 
 class _FakeSim:

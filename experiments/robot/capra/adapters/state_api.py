@@ -6,8 +6,8 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 
-from experiments.robot.capra.env_adapter import EnvAdapter
-from experiments.robot.capra.types import StateSignals
+from experiments.robot.capra.adapters.env_adapter import EnvAdapter
+from experiments.robot.capra.core.types import StateSignals
 
 
 def _as_numpy(value: Any) -> Optional[np.ndarray]:

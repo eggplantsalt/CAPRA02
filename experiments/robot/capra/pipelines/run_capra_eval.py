@@ -7,13 +7,13 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
-from experiments.robot.capra.benchmark_adapters import (
+from experiments.robot.capra.adapters.benchmark_adapters import (
     SafeLiberoSmokeConfig,
     smoke_run_custom_split,
     smoke_run_safelibero,
 )
-from experiments.robot.capra.metrics import EpisodeOutcome, compute_metrics_v1
-from experiments.robot.capra.supervision_io import read_supervision_jsonl
+from experiments.robot.capra.evaluation.metrics import EpisodeOutcome, compute_metrics_v1
+from experiments.robot.capra.io.supervision_io import read_supervision_jsonl
 
 
 def run_capra_eval(

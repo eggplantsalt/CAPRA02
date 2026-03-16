@@ -6,7 +6,7 @@ from typing import Dict
 
 import numpy as np
 
-from experiments.robot.capra.types import FootprintV1, StateSignals
+from experiments.robot.capra.core.types import FootprintV1, StateSignals
 
 
 def _compute_displacement_total(before: StateSignals, after: StateSignals) -> float:

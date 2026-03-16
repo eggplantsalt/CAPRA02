@@ -12,9 +12,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from experiments.robot.capra.env_adapter import EnvAdapter
-from experiments.robot.capra.local_evaluator import evaluate_candidates_v1, summarise_candidate_results
-from experiments.robot.capra.proposals import ProposalConfig, build_local_proposals
+from experiments.robot.capra.adapters.env_adapter import EnvAdapter
+from experiments.robot.capra.core.local_evaluator import evaluate_candidates_v1, summarise_candidate_results
+from experiments.robot.capra.core.proposals import ProposalConfig, build_local_proposals
 
 
 class _FakeSim:

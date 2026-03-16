@@ -10,8 +10,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from experiments.robot.capra.task_progress import compute_progress_features_v1, equivalent_progress_gate
-from experiments.robot.capra.types import StateSignals
+from experiments.robot.capra.core.task_progress import compute_progress_features_v1, equivalent_progress_gate
+from experiments.robot.capra.core.types import StateSignals
 
 
 def test_compute_progress_features_v1_and_gate_pass() -> None:

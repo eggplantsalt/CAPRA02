@@ -6,11 +6,11 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from experiments.robot.capra.env_adapter import EnvAdapter
-from experiments.robot.capra.footprint import compute_footprint_v1
-from experiments.robot.capra.task_progress import compute_progress_features_v1, equivalent_progress_gate
-from experiments.robot.capra.types import ActionProposal, CandidateEvalV1, CandidateSummaryV1
-from experiments.robot.capra.state_api import read_state_signals
+from experiments.robot.capra.adapters.env_adapter import EnvAdapter
+from experiments.robot.capra.adapters.state_api import read_state_signals
+from experiments.robot.capra.core.footprint import compute_footprint_v1
+from experiments.robot.capra.core.task_progress import compute_progress_features_v1, equivalent_progress_gate
+from experiments.robot.capra.core.types import ActionProposal, CandidateEvalV1, CandidateSummaryV1
 
 
 def _to_chunk(action_chunk: np.ndarray) -> np.ndarray:
@@ -36,7 +36,7 @@ def evaluate_candidate_v1(
 	short_horizon_steps: int,
 	epsilon_p: float,
 ) -> CandidateEvalV1:
-	"""Evaluate one candidate from the same snapshot with short counterfactual rollout."""
+	"""从同一个快照出发，执行短视界反事实 rollout 并评估单个候选动作。"""
 	env_adapter.restore(snapshot)
 	env = env_adapter.env
 
@@ -48,6 +48,7 @@ def evaluate_candidate_v1(
 
 	before_signals = read_state_signals(env_adapter, obs=obs_before, info=before_info)
 
+	# 统一动作形状为 [T, D]，便于后续按时间步执行。
 	actions = _to_chunk(proposal.action_chunk)
 	horizon = min(max(short_horizon_steps, 1), actions.shape[0])
 
@@ -70,6 +71,7 @@ def evaluate_candidate_v1(
 		target_dist_after=info_after.get("target_dist") if info_after else None,
 	)
 
+	# progress-preserving gate 只回答“是否明显变差”，不做完整任务等价判定。
 	progress_preserving = equivalent_progress_gate(
 		candidate=progress_features,
 		base=base_progress_features,
@@ -97,7 +99,7 @@ def evaluate_candidates_v1(
 	obs_before: Optional[Dict[str, Any]] = None,
 	info_before: Optional[Dict[str, Any]] = None,
 ) -> CandidateSummaryV1:
-	"""Evaluate base action and local proposals using snapshot-based counterfactual rollouts."""
+	"""在同一初始快照上评估 base 与局部提案，输出候选汇总。"""
 	if not proposals:
 		raise ValueError("proposals must be non-empty")
 
@@ -108,6 +110,7 @@ def evaluate_candidates_v1(
 		if callable(get_observation):
 			obs_before = get_observation()
 
+	# 优先按名称定位 base；若未找到，默认第 0 个候选。
 	base_idx = next((i for i, p in enumerate(proposals) if p.name == base_name), 0)
 	base_eval = evaluate_candidate_v1(
 		env_adapter=env_adapter,
@@ -147,6 +150,7 @@ def evaluate_candidates_v1(
 	safer_index: Optional[int] = None
 	local_regret = 0.0
 	if preserving_indices:
+		# 在 progress-preserving 集合内选择 footprint 最小的候选。
 		safer_index = min(preserving_indices, key=lambda idx: evaluations[idx].footprint.total)
 		base_total = evaluations[base_idx].footprint.total
 		safer_total = evaluations[safer_index].footprint.total

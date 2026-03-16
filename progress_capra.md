@@ -300,3 +300,38 @@ Constraints check:
 Remaining risks/blockers:
 - SafeLIBERO adapter smoke requires external dependency environment consistency under vlsa-aegis/safelibero.
 - This phase intentionally provides thin adapter/smoke support, not full benchmark orchestration.
+
+## Phase 7 - Step1/Step2 Cleanup and Decoupling
+Status: completed
+
+Completed in this phase:
+- Refactored CAPRA Python layout into functional layers:
+  - experiments/robot/capra/adapters/
+  - experiments/robot/capra/core/
+  - experiments/robot/capra/io/
+  - experiments/robot/capra/evaluation/
+  - experiments/robot/capra/pipelines/
+- Refactored CAPRA shell layout:
+  - scripts/capra/mine/
+  - scripts/capra/train/
+  - scripts/capra/eval/
+- Updated all in-repo imports and module entrypoints to new paths.
+- Added Chinese explanatory comments for high-touch CAPRA files:
+  - vla-scripts/finetune_capra.py
+  - experiments/robot/capra/core/local_evaluator.py
+  - experiments/robot/capra/core/mining.py
+  - experiments/robot/capra/adapters/benchmark_adapters.py
+- Added shuffle buffer hard-cap notes in vla-scripts/finetune.py comments.
+- Reorganized docs directory and created new docs skeleton for Step 3.
+- Archived historical CAPRA docs and removed redundant docs/CAPRA02.md.
+- Added docs/CHANGELOG.md to track markdown delete/rewrite/archive decisions.
+
+Tests run:
+- Not run in this phase (per environment constraint: local code writing only, no runtime execution).
+
+Static checks:
+- get_errors reports no editor errors in modified CAPRA core/adapters/pipelines and finetune_capra.py.
+
+Remaining risks/blockers:
+- Archived docs still contain old module/script paths by design for history traceability.
+- Need Step 3 to produce full beginner-facing Chinese manuals on top of new docs tree.

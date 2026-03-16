@@ -63,6 +63,7 @@ from prismatic.vla.datasets.rlds.utils.data_utils import save_dataset_statistics
 
 # Sane Defaults
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+LIBERO_SHUFFLE_BUFFER_LIMIT = 2_000
 
 
 @dataclass
@@ -118,6 +119,24 @@ class FinetuneConfig:
     wandb_log_freq: int = 10                         # WandB logging frequency in steps
 
     # fmt: on
+
+
+def get_effective_shuffle_buffer_size(cfg: FinetuneConfig) -> int:
+    """对 LIBERO/SafeLIBERO 训练强制设置 shuffle buffer 上限，避免内存异常飙升。"""
+    # 经验上 RLDS 在该数据族中若 buffer 过大会显著增加内存压力，
+    # 这里统一收敛到可控上限，优先保证训练稳定性。
+    dataset_name = str(cfg.dataset_name).lower()
+    requested = int(cfg.shuffle_buffer_size)
+    is_libero_like = "libero" in dataset_name or "safelibero" in dataset_name
+
+    if is_libero_like and requested > LIBERO_SHUFFLE_BUFFER_LIMIT:
+        print(
+            "[warning] LIBERO/SafeLIBERO detected; "
+            f"shuffle_buffer_size capped from {requested} to {LIBERO_SHUFFLE_BUFFER_LIMIT}"
+        )
+        return LIBERO_SHUFFLE_BUFFER_LIMIT
+
+    return max(1, requested)
 
 
 def remove_ddp_in_checkpoint(state_dict) -> dict:
@@ -965,6 +984,7 @@ def finetune(cfg: FinetuneConfig) -> None:
 
     # We assume that the model takes as input one third-person camera image and 1 or 2 optional wrist camera image(s)
     use_wrist_image = cfg.num_images_in_input > 1
+    effective_shuffle_buffer_size = get_effective_shuffle_buffer_size(cfg)
 
     # Create training and optional validation datasets
     batch_transform = RLDSBatchTransform(
@@ -980,7 +1000,7 @@ def finetune(cfg: FinetuneConfig) -> None:
         cfg.dataset_name,
         batch_transform,
         resize_resolution=tuple(vla.module.config.image_sizes),
-        shuffle_buffer_size=cfg.shuffle_buffer_size,
+        shuffle_buffer_size=effective_shuffle_buffer_size,
         image_aug=cfg.image_aug,
     )
     if cfg.use_val_set:
@@ -989,7 +1009,7 @@ def finetune(cfg: FinetuneConfig) -> None:
             cfg.dataset_name,
             batch_transform,
             resize_resolution=tuple(vla.module.config.image_sizes),
-            shuffle_buffer_size=cfg.shuffle_buffer_size // 10,
+            shuffle_buffer_size=max(1, effective_shuffle_buffer_size // 10),
             image_aug=cfg.image_aug,
             train=False,
         )
