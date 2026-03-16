@@ -1,4 +1,11 @@
-"""Common CAPRA data structures for CAPRA overlay modules."""
+"""CAPRA overlay 共用数据结构定义。
+
+这个文件用于集中声明 CAPRA 各层（adapters/core/io/evaluation）共享的数据容器。
+好处是：
+1. 跨模块字段命名一致，减少接口歧义。
+2. 便于测试、序列化和类型检查。
+3. 新成员可以通过本文件快速理解 CAPRA 关键中间产物。
+"""
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -8,7 +15,7 @@ import numpy as np
 
 @dataclass
 class EnvSnapshot:
-    """Serializable environment snapshot used for round-trip restore tests."""
+    """可序列化环境快照，用于状态回滚和反事实评估。"""
 
     state: Any
     obs: Optional[Dict[str, Any]] = None
@@ -16,7 +23,7 @@ class EnvSnapshot:
 
 @dataclass
 class StateSignals:
-    """Unified state readout combining obs-backed and sim-backed fields."""
+    """统一状态信号容器：同时承载 obs 来源与 sim 来源字段。"""
 
     ee_pos: Optional[np.ndarray] = None
     ee_quat: Optional[np.ndarray] = None
@@ -41,7 +48,7 @@ class StateSignals:
 
 @dataclass
 class ActionProposal:
-    """A local candidate action chunk around a base action chunk."""
+    """围绕 base action chunk 生成的一个局部候选动作。"""
 
     name: str
     action_chunk: np.ndarray
@@ -50,7 +57,7 @@ class ActionProposal:
 
 @dataclass
 class ProgressFeaturesV1:
-    """Progress-preserving features used by CAPRA v1 gate."""
+    """CAPRA v1 中用于 progress-preserving gate 的特征集合。"""
 
     progress_before: Optional[float] = None
     progress_after: Optional[float] = None
@@ -66,13 +73,15 @@ class ProgressFeaturesV1:
 
 @dataclass
 class FootprintV1:
-    """Footprint v1 container with decomposed components."""
+    """footprint v1 容器，保存总量与分量。"""
 
     displacement_total: float
     severe_event_flags: Dict[str, bool]
     severe_penalty: float
     components: Dict[str, float] = field(default_factory=dict)
 
+    # 功能：返回 footprint v1 的总风险值。
+    # 用法：下游直接比较 total 大小来选择更安全候选。
     @property
     def total(self) -> float:
         return float(self.displacement_total + self.severe_penalty)
@@ -80,7 +89,7 @@ class FootprintV1:
 
 @dataclass
 class CandidateEvalV1:
-    """Evaluation result for one candidate action chunk."""
+    """单个候选动作评估结果。"""
 
     name: str
     action_chunk: np.ndarray
@@ -92,7 +101,7 @@ class CandidateEvalV1:
 
 @dataclass
 class CandidateSummaryV1:
-    """Summary of candidate evaluations against a base action."""
+    """相对 base 动作的候选评估汇总结果。"""
 
     base_name: str
     base_index: int

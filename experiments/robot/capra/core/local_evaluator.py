@@ -1,4 +1,10 @@
-"""Local candidate evaluator for CAPRA v1."""
+"""CAPRA v1 局部候选评估器。
+
+这个文件是 CAPRA 挖掘链路的核心执行层，负责：
+1. 在同一环境快照上逐个执行候选动作（反事实评估）。
+2. 计算每个候选的 progress 特征与 footprint。
+3. 找出 progress-preserving 集合内 footprint 最小的 safer 候选。
+"""
 
 from __future__ import annotations
 
@@ -13,6 +19,8 @@ from experiments.robot.capra.core.task_progress import compute_progress_features
 from experiments.robot.capra.core.types import ActionProposal, CandidateEvalV1, CandidateSummaryV1
 
 
+# 功能：规范化动作形状为 [T, D]。
+# 用法：所有候选动作进入评估前都要先调用。
 def _to_chunk(action_chunk: np.ndarray) -> np.ndarray:
 	arr = np.asarray(action_chunk, dtype=np.float32)
 	if arr.ndim == 1:
@@ -22,10 +30,14 @@ def _to_chunk(action_chunk: np.ndarray) -> np.ndarray:
 	return arr
 
 
+# 功能：统一环境 step 调用，兼容 numpy 输入。
+# 用法：传入单步动作向量，内部转换为 list 后执行。
 def _step_env(env: Any, action: np.ndarray):
 	return env.step(action.tolist())
 
 
+# 功能：输出单候选评估结果（progress + footprint + info_after）。
+# 用法：由 evaluate_candidates_v1 在循环中反复调用。
 def evaluate_candidate_v1(
 	env_adapter: EnvAdapter,
 	proposal: ActionProposal,
@@ -71,7 +83,7 @@ def evaluate_candidate_v1(
 		target_dist_after=info_after.get("target_dist") if info_after else None,
 	)
 
-	# progress-preserving gate 只回答“是否明显变差”，不做完整任务等价判定。
+	# 推进保持 gate 只回答“是否明显变差”，不做完整任务等价判定。
 	progress_preserving = equivalent_progress_gate(
 		candidate=progress_features,
 		base=base_progress_features,
@@ -90,6 +102,8 @@ def evaluate_candidate_v1(
 	)
 
 
+# 功能：完成“评估全部候选 -> 选择 safer -> 计算局部 regret”的完整流程。
+# 用法：上游 mining 调用该函数以获取单时间步候选汇总。
 def evaluate_candidates_v1(
 	env_adapter: EnvAdapter,
 	proposals: List[ActionProposal],
@@ -167,8 +181,10 @@ def evaluate_candidates_v1(
 	)
 
 
+# 功能：把 dataclass 结构整理成 JSON 友好字典。
+# 用法：挖掘记录写盘前调用，便于日志与离线分析。
 def summarise_candidate_results(summary: CandidateSummaryV1) -> Dict[str, Any]:
-	"""Convert candidate summary to a compact serializable dictionary."""
+	"""将候选汇总对象转成紧凑且可序列化的字典。"""
 	candidates = []
 	for idx, ev in enumerate(summary.evaluations):
 		candidates.append(

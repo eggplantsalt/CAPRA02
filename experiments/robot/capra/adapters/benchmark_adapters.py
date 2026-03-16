@@ -1,4 +1,10 @@
-"""Thin benchmark adapters for CAPRA Phase 6."""
+"""CAPRA Phase 6 的轻量 benchmark 适配器。
+
+这个文件不实现完整 benchmark 训练/评测编排，只负责：
+1. 生成上游 LIBERO 评测命令字符串。
+2. 对 SafeLIBERO 依赖与套件注册做烟雾检查。
+3. 对 custom split 名称做白名单校验。
+"""
 
 from __future__ import annotations
 
@@ -24,8 +30,10 @@ class SafeLiberoSmokeConfig:
     safety_level: str = "I"
 
 
+# 功能：给出可直接复制执行的 baseline utility 评测命令。
+# 用法：传入 checkpoint 路径和 suite 名称即可。
 def get_libero_utility_eval_command(pretrained_checkpoint: str, task_suite_name: str = "libero_spatial") -> str:
-    """Return standard upstream LIBERO utility eval command without modifying upstream flow."""
+    """返回上游 LIBERO 评测命令，保持 upstream 流程不变。"""
     return (
         "python experiments/robot/libero/run_libero_eval.py "
         f"--pretrained_checkpoint {pretrained_checkpoint} "
@@ -33,6 +41,8 @@ def get_libero_utility_eval_command(pretrained_checkpoint: str, task_suite_name:
     )
 
 
+# 功能：快速检查 SafeLIBERO 是否已正确安装并可加载目标 suite。
+# 用法：不跑完整评测，只返回适配状态与样例任务信息。
 def smoke_run_safelibero(config: SafeLiberoSmokeConfig) -> Dict[str, Any]:
     """SafeLIBERO 烟雾检查：验证路径、注册表与套件构造是否可用。"""
     safety_level = str(config.safety_level).upper()
@@ -88,6 +98,8 @@ def smoke_run_safelibero(config: SafeLiberoSmokeConfig) -> Dict[str, Any]:
     }
 
 
+# 功能：校验 split 名是否合法并返回可读状态。
+# 用法：评测前先做 split 参数合法性检查。
 def smoke_run_custom_split(split_name: str) -> Dict[str, Any]:
     """自定义 split 烟雾检查：仅允许 v1 已声明的高价值 split。"""
     if split_name not in SUPPORTED_CUSTOM_SPLITS:

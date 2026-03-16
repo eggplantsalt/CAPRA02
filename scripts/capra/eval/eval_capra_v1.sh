@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# 参数顺序：
+# 1 supervision_path  2 output_path  3 benchmark_mode  4 task_suite_name
+# 5 safety_level      6 custom_split 7 safelibero_root
 SUPERVISION_PATH="${1:-tmp/capra/mined_v1.jsonl}"
 OUTPUT_PATH="${2:-tmp/capra/eval_metrics_v1.json}"
 BENCHMARK_MODE="${3:-tiny}"

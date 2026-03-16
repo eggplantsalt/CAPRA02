@@ -11,6 +11,8 @@
     {"id": "phase7_refactor_static_check", "status": "passed"},
     {"id": "phase7_runtime_tests", "status": "not_run"},
     {"id": "phase8_docs_consistency_review", "status": "passed"},
-    {"id": "phase8_runtime_tests", "status": "not_run"}
+    {"id": "phase8_runtime_tests", "status": "not_run"},
+    {"id": "phase9_comment_localization", "status": "passed"},
+    {"id": "phase9_runtime_tests", "status": "not_run"}
   ]
 }

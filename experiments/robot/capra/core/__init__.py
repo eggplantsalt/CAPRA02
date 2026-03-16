@@ -1,4 +1,8 @@
-"""CAPRA 核心算法层：提案、局部评估、挖掘、训练目标。"""
+"""CAPRA 核心算法层导出入口。
+
+该层汇聚 CAPRA 的关键算法组件：
+候选生成、progress 判定、footprint 计算、监督挖掘、训练目标构造。
+"""
 
 from experiments.robot.capra.core.footprint import compute_footprint_v1
 from experiments.robot.capra.core.local_evaluator import evaluate_candidate_v1, evaluate_candidates_v1, summarise_candidate_results

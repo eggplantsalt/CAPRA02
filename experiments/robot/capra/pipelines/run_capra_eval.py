@@ -1,4 +1,10 @@
-"""Tiny/smoke CAPRA v1 evaluation runner."""
+"""CAPRA v1 评测入口（tiny/smoke 模式）。
+
+这个文件聚合三种评测模式：
+1. tiny：基于监督记录与内置样例 outcome 计算指标。
+2. safelibero：做 SafeLIBERO 适配器探活。
+3. custom_split：做 custom split 参数与适配器探活。
+"""
 
 from __future__ import annotations
 
@@ -16,6 +22,8 @@ from experiments.robot.capra.evaluation.metrics import EpisodeOutcome, compute_m
 from experiments.robot.capra.io.supervision_io import read_supervision_jsonl
 
 
+# 功能：根据 benchmark_mode 选择对应评测分支并返回统一字典。
+# 用法：CLI 入口和测试都可直接调用本函数。
 def run_capra_eval(
     supervision_path: str | None,
     tiny: bool = False,
@@ -25,8 +33,9 @@ def run_capra_eval(
     safety_level: str = "I",
     custom_split: str = "support-critical-neighbor",
 ) -> Dict[str, Any]:
-    """Run CAPRA v1 metric aggregation and return structured metrics."""
+    """执行 CAPRA v1 指标聚合并返回结构化结果。"""
     if benchmark_mode == "safelibero":
+        # safelibero 模式优先走适配器探活，不进入 tiny 指标分支。
         adapter = smoke_run_safelibero(
             SafeLiberoSmokeConfig(
                 safelibero_root=safelibero_root,
@@ -42,6 +51,7 @@ def run_capra_eval(
         }
 
     if benchmark_mode == "custom_split":
+        # custom_split 模式用于检查延迟副作用 split 的适配层状态。
         adapter = smoke_run_custom_split(custom_split)
         return {
             "adapter_ok": float(1 if adapter.get("ok") else 0),
@@ -72,14 +82,22 @@ def run_capra_eval(
     return compute_metrics_v1(records=records, episode_outcomes=outcomes)
 
 
+# 功能：持久化评测结果到磁盘。
+# 用法：main 中调用，默认输出到 tmp/capra 目录。
 def _write_metrics(metrics: Dict[str, Any], output_path: str) -> None:
+    """将指标字典写入 JSON 文件。"""
+
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
 
 
+# 功能：参数解析 + 分支调度 + 结果写盘 + 终端打印。
+# 用法：python -m experiments.robot.capra.pipelines.run_capra_eval ...
 def main() -> None:
+    """命令行入口：解析参数并执行评测。"""
+
     parser = argparse.ArgumentParser(description="Run CAPRA v1 metric aggregation")
     parser.add_argument("--supervision_path", type=str, default="", help="Path to mined supervision JSONL")
     parser.add_argument("--output_path", type=str, default="tmp/capra/eval_metrics_v1.json", help="Metric output JSON")

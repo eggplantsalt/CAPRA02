@@ -361,3 +361,28 @@ Tests run:
 
 Remaining risks/blockers:
 - CAPRA training entry is currently overlay/tiny-loop oriented; docs already describe this boundary explicitly.
+
+## Phase 9 - CAPRA 全量中文注释收尾
+Status: completed
+
+Completed in this phase:
+- Added/standardized Chinese comments and docstrings across all CAPRA-related code files:
+  - experiments/robot/capra/adapters/*
+  - experiments/robot/capra/core/*
+  - experiments/robot/capra/io/*
+  - experiments/robot/capra/evaluation/*
+  - experiments/robot/capra/pipelines/*
+  - experiments/robot/capra/__init__.py
+  - vla-scripts/finetune_capra.py
+  - scripts/capra/mine/*, scripts/capra/eval/*, scripts/capra/train/*
+- Kept comments focused on design intent and execution path for beginner readability.
+- Preserved upstream OpenVLA-OFT core behavior and CAPRA overlay boundaries.
+
+Tests run:
+- Not run in this phase (comment/documentation-level code readability update only).
+
+Static checks:
+- get_errors reports no editor errors in modified CAPRA files.
+
+Remaining risks/blockers:
+- Runtime behavior still depends on environment packages and GPU setup (not changed in this phase).

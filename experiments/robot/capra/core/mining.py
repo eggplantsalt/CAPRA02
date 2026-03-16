@@ -1,4 +1,11 @@
-"""CAPRA v1 supervision mining from local candidate evaluation."""
+"""基于局部候选评估结果进行 CAPRA v1 监督样本挖掘。
+
+这个文件负责把“候选评估结果”转成“可训练监督样本”。
+关键逻辑：
+1. 只在存在更安全候选时激活监督。
+2. 只在局部风险差值超过阈值时写入样本。
+3. 使用 clip 后的风险差值作为训练权重。
+"""
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional
@@ -22,6 +29,8 @@ class MiningConfigV1:
     proposal_config: ProposalConfig = field(default_factory=ProposalConfig)
 
 
+# 功能：将输入动作统一整理为 [T, D]。
+# 用法：挖掘前对 base_action 做形状标准化。
 def _to_chunk(action_chunk: np.ndarray) -> np.ndarray:
     arr = np.asarray(action_chunk, dtype=np.float32)
     if arr.ndim == 1:
@@ -31,7 +40,10 @@ def _to_chunk(action_chunk: np.ndarray) -> np.ndarray:
     return arr
 
 
+# 功能：把观测字典转成 JSON 可序列化形式。
+# 用法：写 supervision JSONL 前调用。
 def _to_serializable_obs(observation: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    # JSONL 序列化时将 numpy 数组转换为 list，避免写盘失败。
     if observation is None:
         return {}
 
@@ -49,6 +61,8 @@ def _to_serializable_obs(observation: Optional[Dict[str, Any]]) -> Dict[str, Any
     return serial
 
 
+# 功能：单步生成一条 supervision（或返回 None）。
+# 用法：上游 episode 循环中逐时刻调用。
 def mine_one_timestep_v1(
     env_adapter: EnvAdapter,
     instruction: str,
@@ -85,11 +99,11 @@ def mine_one_timestep_v1(
     base_eval = summary_obj.evaluations[summary_obj.base_index]
     safer_eval = summary_obj.evaluations[safer_index]
     delta = float(base_eval.footprint.total - safer_eval.footprint.total)
-    # Delta_t 不足阈值时跳过，避免引入噪声监督。
+    # 局部风险差值不足阈值时跳过，避免引入噪声监督。
     if delta <= float(config.delta_min):
         return None
 
-    # v1 权重采用 clip(Delta_t, 0, w_max)。
+    # 第一版权重采用 clip(局部风险差值, 0, w_max)。
     weight = float(np.clip(delta, 0.0, config.w_max))
 
     return SupervisionRecord(
@@ -114,6 +128,8 @@ def mine_one_timestep_v1(
     )
 
 
+# 功能：汇总一个 episode 的所有有效监督样本。
+# 用法：pipeline 层调用后直接写入 JSONL。
 def mine_episode_v1(
     env_adapter: EnvAdapter,
     instruction: str,

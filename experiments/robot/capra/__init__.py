@@ -1,4 +1,8 @@
-"""CAPRA overlay package."""
+"""CAPRA overlay 顶层导出模块。
+
+用于向外部代码统一暴露 CAPRA 常用能力，
+避免调用方直接依赖过深的内部目录结构。
+"""
 
 from experiments.robot.capra.adapters.env_adapter import EnvAdapter, get_sim
 from experiments.robot.capra.adapters.state_api import read_state_signals
