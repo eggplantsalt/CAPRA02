@@ -86,6 +86,7 @@ def supervision_record_to_lookup(record: Dict[str, Any]) -> SupervisionLookupEnt
 
     sample_key = str(record.get("sample_key", "")).strip()
     if not sample_key:
+        # 兼容旧记录：缺失 sample_key 时，尽量基于 align/metadata 重建稳定键。
         align = record.get("align", {}) if isinstance(record.get("align", {}), dict) else {}
         metadata = record.get("metadata", {}) if isinstance(record.get("metadata", {}), dict) else {}
         sample_key = build_stable_sample_key(
@@ -167,6 +168,7 @@ def build_batch_sample_identities(batch: Dict[str, Any]) -> List[BatchSampleIden
 
         sample_key = sample_keys[idx] if idx < len(sample_keys) and sample_keys[idx] else ""
         if not sample_key:
+            # 训练 batch 未显式给 key 时，回退到同构键构造，尽量保持与 mining 侧一致。
             sample_key = build_stable_sample_key(
                 dataset_name=dataset_name,
                 instruction=instruction,
@@ -228,6 +230,7 @@ def collate_training_targets(
     weights: List[torch.Tensor] = []
 
     for idx, ident in enumerate(identities):
+        # 核心对齐机制：严格 sample_key 精确匹配，不做 instruction 模糊匹配。
         entries = supervision_index.by_sample_key.get(ident.sample_key, [])
         if not entries:
             continue

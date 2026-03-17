@@ -23,6 +23,37 @@
 - `docs/05_troubleshooting/`
   - `TROUBLESHOOTING.md`：OOM/路径/环境常见报错排查
 
+## 当前执行树（Step 2 梳理后）
+
+- `docs/00_overview/`
+  - `PROJECT_MAP.md`（当前代码入口与目录边界）
+  - `DOCS_TREE_PLAN.md`（本文档）
+- `docs/01_quickstart/`
+  - `QUICKSTART.md`
+- `docs/02_dataset/`
+  - `DATASET_RLDS.md`
+  - `SAFELIBERO_GUIDE.md`
+- `docs/03_training/`
+  - `BASELINE_TRAINING.md`
+  - `CAPRA_TRAINING.md`
+  - `MULTI_GPU_DEEPSPEED.md`
+- `docs/04_evaluation/`
+  - `EVALUATION_GUIDE.md`
+  - `METRICS_EXPLAINED.md`
+- `docs/05_troubleshooting/`
+  - `TROUBLESHOOTING.md`
+- `docs/90_reference/`
+  - `IDEA.md`（方法论参考，不等同实现状态）
+- `docs/99_archive/`
+  - `CAPRA_PLAN.md`
+  - `CAPRA_CONTEXT.md`
+  - `CAPRA_BENCHMARK_ADAPTERS.md`
+
+说明：
+
+- 现行执行口径以 00~05 与根下 CAPRA 状态文档为准。
+- 90_reference/99_archive 仅用于参考和追溯，不作为默认实验手册。
+
 ## 执行约束
 
 - 所有新文档 100% 中文。

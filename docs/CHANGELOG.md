@@ -68,3 +68,68 @@
 ### 备注
 
 - 归档目录 `docs/99_archive/` 保留历史文档，但已补充“历史归档、非当前实现”说明。
+
+## 2026-03-17（Step 1/Step 2：目录与注释/文档梳理）
+
+### Step 1：代码注释与目录解耦结论
+
+- 目录审查结论：CAPRA 代码与脚本已按功能分层，不再额外做高风险物理迁移。
+  - Python：`experiments/robot/capra/{adapters,core,io,evaluation,pipelines}`
+  - Shell：`scripts/capra/{mine,train,eval}`
+- 重点补充中文注释（不改逻辑）：
+  - `vla-scripts/finetune_capra.py`
+  - `experiments/robot/capra/core/training_targets.py`
+  - `experiments/robot/capra/core/mining.py`
+  - `experiments/robot/capra/pipelines/run_capra_mining.py`
+  - `experiments/robot/capra/pipelines/run_capra_eval.py`
+  - `experiments/robot/capra/adapters/benchmark_adapters.py`
+  - `experiments/robot/capra/core/proposals.py`
+  - `scripts/capra/mine/mine_capra_v1.sh`
+  - `scripts/capra/eval/eval_capra_v1.sh`
+
+### Step 2：文档梳理与清理结论
+
+- 保留并重写（与当前代码行为对齐）：
+  - `README.md`
+  - `docs/README.md`
+  - `docs/00_overview/PROJECT_MAP.md`
+  - `docs/01_quickstart/QUICKSTART.md`
+  - `docs/02_dataset/SAFELIBERO_GUIDE.md`
+  - `docs/04_evaluation/EVALUATION_GUIDE.md`
+  - `docs/04_evaluation/METRICS_EXPLAINED.md`
+  - `docs/CAPRA_REALIZATION_AUDIT.md`
+  - `docs/CAPRA_MINING_REALIZATION.md`
+- 保留并加“历史归档”提示：
+  - `docs/99_archive/CAPRA_PLAN.md`
+  - `docs/99_archive/CAPRA_CONTEXT.md`
+  - `docs/99_archive/CAPRA_BENCHMARK_ADAPTERS.md`
+  - `docs/90_reference/IDEA.md`
+- 本阶段未删除 markdown 文件。
+
+## 2026-03-17（Step 3：全套小白中文文档重写）
+
+### 重写范围（仅现有文档）
+
+- `docs/README.md`
+- `docs/00_overview/PROJECT_MAP.md`
+- `docs/01_quickstart/QUICKSTART.md`
+- `docs/02_dataset/DATASET_RLDS.md`
+- `docs/02_dataset/SAFELIBERO_GUIDE.md`
+- `docs/03_training/BASELINE_TRAINING.md`
+- `docs/03_training/CAPRA_TRAINING.md`
+- `docs/03_training/MULTI_GPU_DEEPSPEED.md`
+- `docs/04_evaluation/EVALUATION_GUIDE.md`
+- `docs/04_evaluation/METRICS_EXPLAINED.md`
+- `docs/05_troubleshooting/TROUBLESHOOTING.md`
+
+### 重写目标
+
+- 将文档统一为“小白可复制执行”的傻瓜教程风格。
+- 每篇文档均明确“主路径 / 调试路径 / 当前输出边界”。
+- 命令块统一包含环境激活与工程目录切换，减少路径类低级错误。
+
+### 约束符合性
+
+- 未新增 docs 文件。
+- 未修改业务逻辑代码。
+- 保持 SafeLIBERO-first 口径，并保留兼容模式说明。

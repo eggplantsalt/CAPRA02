@@ -1,82 +1,89 @@
-# 工程目录导引（按当前真实结构）
+# 工程目录导引（新同学必读）
 
-本文给新同学一个明确边界：哪些是 upstream，哪些是 CAPRA overlay。
+这份文件回答一个核心问题：
 
-## 1. upstream 核心区域（尽量不改）
+“我应该改哪里，哪里不能乱改？”
 
-- prismatic/
-- vla-scripts/finetune.py
-- experiments/robot/libero/run_libero_eval.py
-- experiments/robot/openvla_utils.py
-- experiments/robot/robot_utils.py
+## 1. 哪些是上游原生代码（尽量不改）
 
-## 2. CAPRA overlay 核心区域
+- `prismatic/`
+- `vla-scripts/finetune.py`
+- `experiments/robot/libero/run_libero_eval.py`
+- `experiments/robot/openvla_utils.py`
+- `experiments/robot/robot_utils.py`
 
-### 2.1 Python 分层
+原则：
 
-- experiments/robot/capra/adapters/
-	- env_adapter.py：统一环境与 sim 访问
-	- state_api.py：obs-first, sim-backed 状态读取
-	- benchmark_adapters.py：SafeLIBERO 环境可用性校验与 custom split 白名单
-- experiments/robot/capra/core/
-	- proposals.py：prefix-local 模板候选生成（含 gripper/protected dims 保护）
-	- task_progress.py：progress-preserving gate
-	- footprint.py：footprint v1 计算
-	- local_evaluator.py：反事实短视界评估
-	- mining.py：监督挖掘
-	- training_targets.py：监督样本转训练张量
-	- types.py：核心数据结构
-- experiments/robot/capra/io/
-	- supervision_io.py：JSONL 读写
-- experiments/robot/capra/evaluation/
-	- metrics.py：SPIR、EAR 与 episode 指标
-- experiments/robot/capra/pipelines/
-	- run_capra_mining.py：挖掘入口
-	- run_capra_eval.py：评测入口（默认 safelibero_real）
+- 这些文件属于上游主干；CAPRA 以 overlay 方式接入，优先少改或不改。
 
-### 2.2 Shell 分层
+## 2. 哪些是 CAPRA 代码（主要维护区）
 
-- scripts/capra/mine/mine_capra_v1.sh
-- scripts/capra/train/finetune_capra_v1_deepspeed.sh
-- scripts/capra/eval/eval_capra_v1.sh
+### 2.1 Python 模块分层
 
-## 3. 入口速查
+- `experiments/robot/capra/adapters/`
+  - `env_adapter.py`：环境快照/回滚抽象。
+  - `state_api.py`：从 obs/info/sim 读取统一状态信号。
+  - `benchmark_adapters.py`：SafeLIBERO 环境可用性校验、custom split 校验。
 
-### 3.1 Baseline
+- `experiments/robot/capra/core/`
+  - `proposals.py`：候选动作块生成（prefix-local 主路径）。
+  - `task_progress.py`：progress-preserving gate。
+  - `footprint.py`：局部风险度量。
+  - `local_evaluator.py`：同一快照下反事实候选评估。
+  - `mining.py`：将候选评估结果挖掘为 supervision。
+  - `training_targets.py`：训练 batch 与 supervision 严格 key 对齐。
+  - `types.py`：核心数据结构。
+
+- `experiments/robot/capra/io/`
+  - `supervision_io.py`：supervision JSONL 读写、schema 升级。
+
+- `experiments/robot/capra/evaluation/`
+  - `metrics.py`：SPIR/EAR 与 episode 统计函数。
+
+- `experiments/robot/capra/pipelines/`
+  - `run_capra_mining.py`：挖掘入口。
+  - `run_capra_eval.py`：评测入口。
+
+### 2.2 Shell 脚本分层
+
+- `scripts/capra/mine/mine_capra_v1.sh`
+- `scripts/capra/train/finetune_capra_v1_deepspeed.sh`
+- `scripts/capra/eval/eval_capra_v1.sh`
+
+## 3. 一分钟理解主路径
+
+- 训练主路径：`vla-scripts/finetune_capra.py`
+  - 主损失来自 RLDS 主数据流。
+  - CAPRA supervision 是附加监督。
+
+- 挖掘主路径：`run_capra_mining.py`
+  - episodes JSONL + env_factory -> supervision JSONL。
+
+- 评测默认主路径：`run_capra_eval.py --benchmark_mode safelibero_real`
+  - 当前返回 SafeLIBERO 环境可用性统计。
+
+## 4. 必须区分的 debug/test-only 路径
+
+- `run_capra_eval.py` 里的 `debug_tiny`、`debug_custom_split`。
+- `tests/capra/` 里的单元测试和 smoke 用例。
+
+这些路径用于调试与验证，不是论文主结果路径。
+
+## 5. 入口速查命令
 
 ```bash
 conda activate openvla-oft
 cd /path/to/openvla-oft
 
-# 训练
+# Baseline 训练入口
 python vla-scripts/finetune.py --help
 
-# 评测
-python experiments/robot/libero/run_libero_eval.py --help
-```
-
-### 3.2 CAPRA
-
-```bash
-conda activate openvla-oft
-cd /path/to/openvla-oft
-
-# 挖掘
-python -m experiments.robot.capra.pipelines.run_capra_mining --help
-
-# 训练
+# CAPRA 训练入口
 python vla-scripts/finetune_capra.py --help
 
-# 评测
+# CAPRA 挖掘入口
+python -m experiments.robot.capra.pipelines.run_capra_mining --help
+
+# CAPRA 评测入口
 python -m experiments.robot.capra.pipelines.run_capra_eval --help
 ```
-
-## 4. 主路径与调试路径
-
-- 主路径：
-	- 训练：`vla-scripts/finetune_capra.py`（RLDS task_loss + CAPRA 附加 supervision）
-	- 挖掘：`run_capra_mining.py`（episodes JSONL + env_factory）
-	- 评测：`run_capra_eval.py --benchmark_mode safelibero_real`（当前返回 SafeLIBERO 环境可用性统计）
-- debug/test-only：
-	- `debug_tiny`、`debug_custom_split`
-	- `tests/capra/*` 下单测与 smoke 测试

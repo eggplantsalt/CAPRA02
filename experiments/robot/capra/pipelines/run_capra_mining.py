@@ -51,6 +51,7 @@ def load_episodes_jsonl(path: str) -> List[Dict[str, Any]]:
             raw = json.loads(line)
             timesteps = []
             for step in raw.get("timesteps", []):
+                # 统一把常用字段转换为 numpy 结构，避免后续评估阶段类型不一致。
                 step_copy = dict(step)
                 step_copy["base_action"] = np.asarray(step_copy["base_action"], dtype=np.float32)
                 if "observation_input" in step_copy:
@@ -151,6 +152,7 @@ def run_capra_mining_from_episodes_file(
 
     all_records: List[SupervisionRecord] = []
     for episode_idx, ep in enumerate(episodes):
+        # 每个 episode 独立构建环境，确保初始状态、观测上下文与该 episode 对齐。
         env = env_factory(ep)
         env_adapter = EnvAdapter(env)
         instruction = str(ep.get("instruction", ""))
@@ -166,6 +168,7 @@ def run_capra_mining_from_episodes_file(
         all_records.extend(records)
 
     write_supervision_jsonl(all_records, output_path)
+    # debug summary 仅用于本地排障，不影响训练可消费的 supervision JSONL。
     maybe_write_debug_summary(all_records, debug_summary_path)
     return all_records
 

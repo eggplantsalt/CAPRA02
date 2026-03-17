@@ -1,90 +1,75 @@
-# 指标与日志解释（严格按当前实现）
+# 指标与日志解读（新手版）
 
-本文只解释当前代码已经产出的指标与日志。
+本文目标：你看到日志字段时，能立刻知道“它在表达什么”。
 
-## 1. CAPRA 训练日志（finetune_capra.py）
+## 1. 训练日志字段（CAPRA）
 
-当前会打印：
+入口：`vla-scripts/finetune_capra.py`
 
-- task_loss：主数据流任务损失（来自 RLDS batch）
-- capra_loss：命中 supervision 时的附加 safer 回归损失
-- total_loss：task_loss + lambda_capra * capra_loss
+当前稳定字段：
 
-命令示例：
+- `task_loss`：RLDS 主数据流的任务损失。
+- `capra_loss`：命中 supervision 样本时的附加损失。
+- `total_loss`：总损失，`task_loss + lambda_capra * capra_loss`。
+- `capra_hits`：当前 batch 命中 supervision 的样本数。
 
-```bash
-conda activate openvla-oft
-cd /path/to/openvla-oft
+如何判断训练是否正常：
 
-python vla-scripts/finetune_capra.py \
-  --vla_path openvla/openvla-7b \
-  --data_root_dir /path/to/rlds \
-  --dataset_name libero_spatial_no_noops \
-  --run_root_dir /path/to/runs \
-  --supervision_path tmp/capra/mined_v1.jsonl \
-  --max_steps 20 \
-  --lambda_capra 1.0 \
-  --learning_rate 5e-4
-```
+1. `task_loss` 非 NaN、可波动下降。
+2. `capra_hits` 不是长期为 0（否则 supervision 没对齐上）。
+3. `total_loss` 和 `task_loss/capra_loss` 数值量级相符。
 
-## 2. CAPRA 评测输出（按模式区分）
+## 2. 评测输出字段（按模式看）
 
-### 2.1 debug_tiny（调试指标聚合）
+### 2.1 `safelibero_real`（默认）
 
-调用 `compute_metrics_v1`，输出字段包括：
+当前主要看：
 
-- SPIR：有效步中 base 不是最安全动作的比例
-- EAR：有效步上的平均正 regret
-- success_rate：episode 成功率
-- displacement_total_mean：总位移均值
-- non_target_displacement_mean：非目标位移均值
-- severe_event_rate：严重事件比例
-- num_effective_steps：有效时间步数
-- num_episodes：episode 数
+- `adapter_ok`
+- `num_tasks`
+- `sample_task`
 
-### 2.2 safelibero_real（默认主路径）
+这组字段是“环境入口是否可用”的信号。
 
-当前输出以环境可用性统计为主：
+### 2.2 `libero_real`
 
-- adapter_ok
-- num_tasks
-- sample_task
-- task_suite_name
-- safety_level
+当前主要看：
 
-说明：该模式当前不直接输出策略 rollout success_rate。
+- `success_rate`
 
-### 2.3 libero_real（可选路径）
+### 2.3 `debug_tiny`
 
-复用上游 `run_libero_eval.py`，当前返回：
+会调用 `compute_metrics_v1`，输出：
 
-- success_rate
-- task_suite_name
+- `SPIR`
+- `EAR`
+- `success_rate`
+- `displacement_total_mean`
+- `non_target_displacement_mean`
+- `severe_event_rate`
 
-命令示例：
+## 3. 关于 Loss_act / Loss_ret / lambda / epsilon
 
-```bash
-conda activate openvla-oft
-cd /path/to/openvla-oft
+你要求的这些术语里，当前代码状态是：
 
-python -m experiments.robot.capra.pipelines.run_capra_eval \
-  --output_path tmp/capra/eval_metrics_v1.json \
-  --benchmark_mode safelibero_real \
-  --task_suite_name safelibero_spatial \
-  --safety_level I \
-  --safelibero_root vlsa-aegis/safelibero
+- `Loss_act`：当前代码没有这个字段。
+- `Loss_ret`：当前代码没有这个字段。
+- `lambda`：当前对应 `lambda_capra`（命令参数 `--lambda_capra`）。
+- `epsilon`：当前对应 `epsilon_p`（定义在 mining 配置里，不是训练日志字段）。
 
-cat tmp/capra/eval_metrics_v1.json
-```
+因此你在当前实现中应该重点看：
 
-## 3. 关于 Loss_act、Loss_ret、lambda、epsilon 的说明
+- 训练：`task_loss/capra_loss/total_loss/capra_hits`
+- 评测：按模式读取字段，不要跨模式套用。
 
-- 当前 CAPRA overlay 代码没有名为 Loss_act 或 Loss_ret 的日志字段。
-- 当前实现里对应的训练系数是 lambda_capra（命令参数 --lambda_capra）。
-- 当前实现里 progress gate 的阈值 epsilon_p 定义在 MiningConfigV1，但没有通过 CLI 暴露到 run_capra_mining.py。
+## 4. 梯度冲突监控说明
 
-结论：
+当前代码没有显式输出“梯度冲突指数”或“梯度夹角”字段。
 
-- 你现在能直接监控的是 task_loss、capra_loss、total_loss，以及评测模式对应的输出字段。
-- SPIR、EAR 当前属于 `debug_tiny` 指标聚合路径，不是 `safelibero_real` 默认输出。
-- 如果后续要在主评测路径输出更多 CAPRA 指标，需要继续接入完整 rollout 结果并扩展 pipeline 输出。
+可替代的工程观察方式：
+
+1. 看 `task_loss` 是否异常抖动或发散。
+2. 看 `capra_loss` 在 `capra_hits>0` 时是否长期无法下降。
+3. 看 `total_loss` 是否长期被某一项主导。
+
+如果后续需要严格梯度冲突监控，需要在训练循环新增梯度统计日志。

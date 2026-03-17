@@ -29,77 +29,160 @@ python vla-scripts/finetune_capra.py --vla_path openvla/openvla-7b --data_root_d
 ```
 
 ## 3. DeepSpeed mode requires CUDA device
+# 故障排查（傻瓜版）
 
-原因：在 CPU 环境开启了 --use_deepspeed。
+目标：你只要照着这份文档做，就能把大部分常见问题定位到具体环节。
 
-解决：
+排查统一模板：
+
+1. 报错是什么。
+2. 去哪里看。
+3. 改哪里。
+4. 怎么复验。
+
+## 1. `capra_loss` 一直是 0
+
+报错/现象：
+
+- 训练日志有 `task_loss`，但 `capra_loss` 长期为 0。
+- `capra_hits` 经常是 0。
+
+去哪里看：
+
+1. 训练命令里的 `--supervision_path`。
+2. 监督文件里 `sample_key` 是否真实存在。
+3. 训练 batch 的样本 key 是否和 supervision key 同格式。
+
+改哪里：
+
+1. 确保 `--supervision_path` 指向你刚挖掘出的 JSONL。
+2. 对齐 key 规则（不要一边带前缀一边不带）。
+
+怎么复验：
+
+1. 跑 20-50 steps 小实验。
+2. 观察日志中 `capra_hits` 是否出现正值。
+3. 观察 `capra_loss` 是否不再长期为 0。
+
+## 2. supervision 命中率极低
+
+报错/现象：
+
+- 训练能跑，但 supervision 几乎不生效。
+
+去哪里看：
+
+1. `run_capra_mining.py` 输出的 supervision 条目数。
+2. 挖掘过滤条件是否太严。
+
+改哪里：
+
+1. 先放宽挖掘阈值，确保先有覆盖。
+2. 先保证“能命中”，再做“高质量筛选”。
+
+怎么复验：
+
+1. 对比新旧 supervision 文件条目数。
+2. 再跑训练小实验，确认 `capra_hits` 增加。
+
+## 3. SafeLIBERO 评测没有 `success_rate`
+
+报错/现象：
+
+- `safelibero_real` 输出里没有 `success_rate`。
+
+去哪里看：
+
+1. `run_capra_eval.py` 的模式分支。
+
+解释（这是当前实现，不是你命令写错）：
+
+1. `safelibero_real` 当前主打入口可用性信号。
+2. 若要直接看 `success_rate`，使用 `libero_real`。
+
+怎么复验：
+
+1. 同样命令改 `--benchmark_mode libero_real` 再跑一次。
+2. 输出 JSON 应该包含 `success_rate`。
+
+## 4. DeepSpeed 多卡起不来
+
+报错/现象：
+
+- 初始化卡住或直接退出。
+
+去哪里看：
+
+1. `nvidia-smi`。
+2. Python 里 `torch.cuda.is_available()` 和 `torch.cuda.device_count()`。
+3. DeepSpeed 是否在当前环境安装。
+
+改哪里：
+
+1. 先修环境一致性，再谈训练参数。
+2. 先单卡跑通，再切多卡。
+
+怎么复验：
+
+1. 单卡命令稳定跑通。
+2. 多卡最小步数（20-50 step）可启动并产生日志。
+
+## 5. SafeLIBERO 任务加载失败
+
+报错/现象：
+
+- 提示 task suite 不存在或资源找不到。
+
+去哪里看：
+
+1. `--safelibero_root` 路径。
+2. `--task_suite_name` 是否拼写正确。
+
+改哪里：
+
+1. 先用文档里的最小 suite 验证路径。
+2. 再替换成目标 suite。
+
+怎么复验：
+
+1. 运行评测命令后，输出 JSON 至少包含 `adapter_ok/num_tasks/sample_task`。
+
+## 6. 你可以直接复制的“最小复现命令”
+
+### 6.1 训练最小复现
 
 ```bash
-# 方案 A：不用 deepspeed
 conda activate openvla-oft
 cd /path/to/openvla-oft
-python vla-scripts/finetune_capra.py --vla_path openvla/openvla-7b --data_root_dir /path/to/rlds --dataset_name libero_spatial_no_noops --run_root_dir /path/to/runs --supervision_path tmp/capra/mined_v1.jsonl --max_steps 10
 
-# 方案 B：切到有 GPU 的机器，再使用 deepspeed 脚本
-conda activate openvla-oft
-cd /path/to/openvla-oft
-export NUM_GPUS=1
-bash scripts/capra/train/finetune_capra_v1_deepspeed.sh tmp/capra/mined_v1.jsonl openvla/openvla-7b /path/to/rlds libero_spatial_no_noops /path/to/runs 200 1.0 5e-4
+python vla-scripts/finetune_capra.py \
+  --vla_path openvla/openvla-7b \
+  --data_root_dir /path/to/rlds \
+  --dataset_name libero_spatial_no_noops \
+  --run_root_dir /path/to/runs \
+  --supervision_path tmp/capra/mined_v1.jsonl \
+  --max_steps 20 \
+  --batch_size 2
 ```
 
-## 4. deepspeed is not installed
-
-原因：环境缺少 deepspeed 包。
-
-解决：
-
-```bash
-conda activate openvla-oft
-pip install deepspeed
-```
-
-## 5. SafeLIBERO root not found
-
-原因：--safelibero_root 路径错误。
-
-解决：
+### 6.2 评测最小复现（SafeLIBERO 主路径）
 
 ```bash
 conda activate openvla-oft
 cd /path/to/openvla-oft
 
 python -m experiments.robot.capra.pipelines.run_capra_eval \
+  --output_path tmp/capra/eval_metrics_v1.json \
   --benchmark_mode safelibero_real \
-  --safelibero_root vlsa-aegis/safelibero \
   --task_suite_name safelibero_spatial \
   --safety_level I \
-  --output_path tmp/capra/eval_metrics_v1.json
+  --safelibero_root vlsa-aegis/safelibero
 ```
 
-## 6. 显存不足或内存飙升
+## 7. 通用排查顺序（避免绕路）
 
-场景 A：Baseline 训练显存不足。
-
-- 降低 --batch_size
-- 关闭非必要开关（例如先不启用 diffusion）
-
-场景 B：RLDS 数据加载占用过高。
-
-- 显式传 --shuffle_buffer_size 2000
-- 当前代码在 LIBERO/SafeLIBERO 数据名下也会自动限流到 2000
-
-模板：
-
-```bash
-conda activate openvla-oft
-cd /path/to/openvla-oft
-
-python vla-scripts/finetune.py \
-  --vla_path openvla/openvla-7b \
-  --data_root_dir /path/to/rlds \
-  --dataset_name libero_spatial_no_noops \
-  --run_root_dir /path/to/runs \
-  --shuffle_buffer_size 2000 \
-  --batch_size 1 \
-  --max_steps 1000
-```
+1. 先查路径和文件是否存在。
+2. 再查 key 和字段是否对齐。
+3. 先做最小规模跑通（单卡、少步数）。
+4. 跑通后再加多卡和调参。
+5. 最后再做指标解释与实验对比。

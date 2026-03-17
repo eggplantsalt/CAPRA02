@@ -193,6 +193,7 @@ class CapraPaddedCollator(PaddedCollatorForActionPrediction):
 
 
 def _module_of(model_or_wrapper: Any) -> Any:
+    # DDP/DeepSpeed 下有时需要访问 .module；普通单卡对象则直接返回自身。
     return model_or_wrapper.module if hasattr(model_or_wrapper, "module") else model_or_wrapper
 
 
@@ -257,6 +258,7 @@ def compute_capra_loss_from_batch(
     collation: BatchSupervisionCollation,
 ) -> Tuple[torch.Tensor, int]:
     """根据严格 sample_key 命中结果计算 CAPRA 附加损失。"""
+    # 没有 supervision 命中时，CAPRA loss 直接为 0，训练退化为纯主任务学习。
     if collation.num_hits <= 0:
         return torch.zeros((), dtype=predicted_actions.dtype, device=predicted_actions.device), 0
 
@@ -268,6 +270,7 @@ def compute_capra_loss_from_batch(
         pred = predicted_actions[batch_idx]
 
         if target.shape != pred.shape:
+            # 不同 chunk 长度时优先做最小必要裁剪；维度对不上则跳过该监督样本。
             if target.shape[0] > pred.shape[0]:
                 target = target[: pred.shape[0]]
             elif target.shape[0] < pred.shape[0]:
@@ -334,6 +337,7 @@ def compute_task_loss_on_main_batch(
 
 
 def _load_deepspeed_config(cfg: FinetuneCapraConfig, train_batch_size: int) -> Dict[str, Any]:
+    # 优先使用外部 JSON，便于服务器端按集群策略微调 ZeRO 与通信参数。
     if cfg.deepspeed_config_path:
         path = Path(cfg.deepspeed_config_path)
         if not path.exists():
@@ -376,6 +380,7 @@ def finetune_capra(cfg: FinetuneCapraConfig) -> None:
         cfg.supervision_path,
         strict_key_only=True,
     )
+    # strict_key_only=True：仅允许稳定 sample_key 命中，避免“语义相似但样本不一致”污染监督。
     if distributed_state.is_main_process:
         print(f"Loaded CAPRA supervision keys: {len(supervision_index.by_sample_key)} from {cfg.supervision_path}")
 
@@ -529,6 +534,7 @@ def finetune_capra(cfg: FinetuneCapraConfig) -> None:
             optimizer.zero_grad()
 
         for batch_idx, batch in enumerate(dataloader):
+            # 第一段：主路径损失来自上游真实 batch forward。
             task_loss, task_metrics = compute_task_loss_on_main_batch(
                 vla=vla,
                 action_head=action_head,
@@ -541,6 +547,7 @@ def finetune_capra(cfg: FinetuneCapraConfig) -> None:
                 num_patches=num_patches,
             )
 
+            # 第二段：在同一 batch 上取预测动作，与 supervision 查表命中结果计算 CAPRA 附加损失。
             predicted_actions = _predict_actions_l1(
                 vla=vla,
                 action_head=action_head,
@@ -566,12 +573,14 @@ def finetune_capra(cfg: FinetuneCapraConfig) -> None:
             )
 
             if cfg.use_deepspeed:
+                # DeepSpeed 分支由引擎接管 backward/step；外部只提交 total_loss。
                 vla.backward(total_loss)
                 vla.step()
                 if batch_idx % cfg.grad_accumulation_steps == 0:
                     progress.update()
             else:
                 assert optimizer is not None and scheduler is not None
+                # 非 DeepSpeed 分支显式做梯度累积，保持与上游训练节奏一致。
                 normalized_loss = total_loss / cfg.grad_accumulation_steps
                 normalized_loss.backward()
 

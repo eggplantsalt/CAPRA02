@@ -1,34 +1,29 @@
-# 多卡与 DeepSpeed 模板
+# 多卡与 DeepSpeed 操作手册
 
-本页统一给出 Baseline 多卡与 CAPRA DeepSpeed 的可复制命令。
+## 1. 先判断你该用哪种方式
 
-## 1. Baseline 多卡（torchrun）
+- Baseline 原生多卡：`torchrun + vla-scripts/finetune.py`
+- CAPRA 多卡：优先走 `scripts/capra/train/finetune_capra_v1_deepspeed.sh`
+
+## 2. Baseline 多卡模板（torchrun）
 
 ```bash
 conda activate openvla-oft
 cd /path/to/openvla-oft
 
-torchrun --standalone --nnodes 1 --nproc-per-node 8 vla-scripts/finetune.py \
+torchrun --standalone --nnodes 1 --nproc-per-node 4 vla-scripts/finetune.py \
   --vla_path openvla/openvla-7b \
   --data_root_dir /path/to/rlds \
   --dataset_name libero_spatial_no_noops \
   --run_root_dir /path/to/runs \
   --shuffle_buffer_size 2000 \
-  --use_l1_regression True \
-  --use_diffusion False \
-  --use_film False \
-  --num_images_in_input 2 \
-  --use_proprio True \
   --batch_size 8 \
   --learning_rate 5e-4 \
   --max_steps 150005 \
-  --save_freq 10000 \
-  --lora_rank 32 \
-  --wandb_entity your_entity \
-  --wandb_project your_project
+  --save_freq 10000
 ```
 
-## 2. CAPRA DeepSpeed（单机多卡）
+## 3. CAPRA DeepSpeed 模板（推荐）
 
 ```bash
 conda activate openvla-oft
@@ -45,7 +40,7 @@ bash scripts/capra/train/finetune_capra_v1_deepspeed.sh \
   1.0
 ```
 
-## 3. CAPRA DeepSpeed（自定义配置）
+## 4. 带自定义 DeepSpeed 配置
 
 ```bash
 conda activate openvla-oft
@@ -64,8 +59,14 @@ bash scripts/capra/train/finetune_capra_v1_deepspeed.sh \
   /path/to/deepspeed_config.json
 ```
 
-## 4. 推荐执行顺序
+## 5. 从 1 卡扩到 N 卡的稳妥步骤
 
-1. 先用 NUM_GPUS=1 跑通流程
-2. 再扩到 NUM_GPUS=2
-3. 最后扩到目标卡数
+1. 单卡先跑通（确认损失和保存目录正常）。
+2. 扩到 2 卡（确认不会死锁或 OOM）。
+3. 扩到目标卡数。
+
+## 6. 最常见 3 个问题
+
+1. `deepspeed` 没装。
+2. `NUM_GPUS` 和实际可见 GPU 数不一致。
+3. batch 太大导致 OOM。

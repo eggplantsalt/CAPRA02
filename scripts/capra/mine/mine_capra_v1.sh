@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# CAPRA 挖掘脚本（主路径）：
+# - 输入真实 rollout episodes JSONL 与 env_factory
+# - 输出可用于训练查表的 supervision JSONL
+
 # 参数：
 # 1 episodes_path（rollout episode JSONL）
 # 2 env_factory（module:function）

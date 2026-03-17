@@ -84,6 +84,8 @@ def mine_one_timestep_v1(
     config = cfg or MiningConfigV1()
     base_chunk = _to_chunk(base_action_chunk)
 
+    # 调用链关键节点：base_chunk -> build_local_proposals -> evaluate_candidates_v1。
+    # 这里不做策略采样/检索，只在局部模板候选上做反事实评估。
     # 候选生成主路径走 ProposalConfig（前缀级局部模板 + gripper 保护）。
     proposals = build_local_proposals(
         base_chunk,
@@ -102,9 +104,11 @@ def mine_one_timestep_v1(
     summary = summarise_candidate_results(summary_obj)
 
     safer_index = summary_obj.safer_index
+    # 情况 1：不存在 progress-preserving safer 候选 -> 不产出 supervision。
     if safer_index is None:
         return None
 
+    # 情况 2：最安全候选就是 base 自身 -> 不产出 supervision。
     if safer_index == summary_obj.base_index:
         return None
 
