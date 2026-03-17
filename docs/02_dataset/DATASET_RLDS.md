@@ -79,6 +79,16 @@ python vla-scripts/finetune.py \
 conda activate openvla-oft
 cd /path/to/openvla-oft
 
-bash scripts/capra/mine/mine_capra_v1.sh tmp/capra/mined_v1.jsonl
-python vla-scripts/finetune_capra.py --supervision_path tmp/capra/mined_v1.jsonl --steps 10
+bash scripts/capra/mine/mine_capra_v1.sh \
+  /path/to/episodes.jsonl \
+  your_pkg.your_env_factory:build_env \
+  tmp/capra/mined_v1.jsonl
+
+python vla-scripts/finetune_capra.py \
+  --vla_path openvla/openvla-7b \
+  --data_root_dir /data/rlds \
+  --dataset_name libero_spatial_no_noops \
+  --run_root_dir /data/runs \
+  --supervision_path tmp/capra/mined_v1.jsonl \
+  --max_steps 10
 ```

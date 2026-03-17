@@ -1,5 +1,7 @@
 # CAPRA Benchmark Adapters (Phase 6)
 
+> 历史归档说明：本文件对应早期阶段记录，模块路径与默认行为可能已变化，不作为当前执行手册。
+
 ## Goal
 Provide a thin benchmark adapter layer for CAPRA without rewriting upstream LIBERO evaluation.
 

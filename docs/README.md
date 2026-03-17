@@ -29,3 +29,10 @@
 - `docs/CONTEXT.md` 作为全局约束文件，保持原位且不修改。
 - 归档区文档用于追溯历史决策，不作为默认执行手册。
 - 新增教程优先采用“复制粘贴即可执行”的命令风格。
+
+## 当前主路径速记
+
+- CAPRA 训练主路径：`vla-scripts/finetune_capra.py`（RLDS task_loss + CAPRA 附加 supervision）。
+- CAPRA 挖掘主路径：`experiments/robot/capra/pipelines/run_capra_mining.py`（episodes JSONL + env_factory）。
+- CAPRA 评测默认主路径：`run_capra_eval.py --benchmark_mode safelibero_real`（当前输出 SafeLIBERO 环境可用性统计）。
+- `debug_tiny`、`debug_custom_split` 属于调试路径，不作为论文主结果。

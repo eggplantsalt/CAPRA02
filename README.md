@@ -29,3 +29,10 @@
 - `docs/CONTEXT.md` 作为全局约束文件，保持原位且不修改。
 - 归档区文档用于追溯历史决策，不作为默认执行手册。
 - 新增教程优先采用“复制粘贴即可执行”的命令风格。
+
+## CAPRA 默认主路径说明
+
+- CAPRA 训练默认入口是 `vla-scripts/finetune_capra.py` 的真实 overlay 路径（OpenVLA checkpoint + RLDS 主数据流 + CAPRA 附加 supervision）。
+- CAPRA 挖掘默认入口是 `experiments/robot/capra/pipelines/run_capra_mining.py`（要求 episodes JSONL + env_factory）。
+- CAPRA 评测默认入口是 `experiments/robot/capra/pipelines/run_capra_eval.py` 的 `safelibero_real` 模式（SafeLIBERO 环境主路径，当前返回环境可用性统计）。
+- tiny/smoke 仅保留为 debug-only 选项，默认关闭，不能作为推荐主流程。

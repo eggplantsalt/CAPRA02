@@ -37,9 +37,12 @@ cd /path/to/openvla-oft
 export NUM_GPUS=4
 bash scripts/capra/train/finetune_capra_v1_deepspeed.sh \
   tmp/capra/mined_v1.jsonl \
+  openvla/openvla-7b \
+  /path/to/rlds \
+  libero_spatial_no_noops \
+  /path/to/runs \
   1000 \
-  1.0 \
-  1e-4
+  1.0
 ```
 
 ## 3. CAPRA DeepSpeed（自定义配置）
@@ -51,9 +54,13 @@ cd /path/to/openvla-oft
 export NUM_GPUS=4
 bash scripts/capra/train/finetune_capra_v1_deepspeed.sh \
   tmp/capra/mined_v1.jsonl \
+  openvla/openvla-7b \
+  /path/to/rlds \
+  libero_spatial_no_noops \
+  /path/to/runs \
   1000 \
   1.0 \
-  1e-4 \
+  5e-4 \
   /path/to/deepspeed_config.json
 ```
 

@@ -16,7 +16,7 @@ python -m experiments.robot.capra.pipelines.run_capra_eval --help
 
 ## 2. supervision_path must be provided
 
-原因：调用 finetune_capra.py 时没传监督文件，且没用 --tiny_smoke。
+原因：调用 finetune_capra.py 时没传监督文件。
 
 解决：
 
@@ -24,8 +24,8 @@ python -m experiments.robot.capra.pipelines.run_capra_eval --help
 conda activate openvla-oft
 cd /path/to/openvla-oft
 
-bash scripts/capra/mine/mine_capra_v1.sh tmp/capra/mined_v1.jsonl
-python vla-scripts/finetune_capra.py --supervision_path tmp/capra/mined_v1.jsonl --steps 10
+bash scripts/capra/mine/mine_capra_v1.sh /path/to/episodes.jsonl your_pkg.your_env_factory:build_env tmp/capra/mined_v1.jsonl
+python vla-scripts/finetune_capra.py --vla_path openvla/openvla-7b --data_root_dir /path/to/rlds --dataset_name libero_spatial_no_noops --run_root_dir /path/to/runs --supervision_path tmp/capra/mined_v1.jsonl --max_steps 10
 ```
 
 ## 3. DeepSpeed mode requires CUDA device
@@ -38,13 +38,13 @@ python vla-scripts/finetune_capra.py --supervision_path tmp/capra/mined_v1.jsonl
 # 方案 A：不用 deepspeed
 conda activate openvla-oft
 cd /path/to/openvla-oft
-python vla-scripts/finetune_capra.py --supervision_path tmp/capra/mined_v1.jsonl --steps 10
+python vla-scripts/finetune_capra.py --vla_path openvla/openvla-7b --data_root_dir /path/to/rlds --dataset_name libero_spatial_no_noops --run_root_dir /path/to/runs --supervision_path tmp/capra/mined_v1.jsonl --max_steps 10
 
 # 方案 B：切到有 GPU 的机器，再使用 deepspeed 脚本
 conda activate openvla-oft
 cd /path/to/openvla-oft
 export NUM_GPUS=1
-bash scripts/capra/train/finetune_capra_v1_deepspeed.sh tmp/capra/mined_v1.jsonl 200 1.0 1e-4
+bash scripts/capra/train/finetune_capra_v1_deepspeed.sh tmp/capra/mined_v1.jsonl openvla/openvla-7b /path/to/rlds libero_spatial_no_noops /path/to/runs 200 1.0 5e-4
 ```
 
 ## 4. deepspeed is not installed
@@ -69,11 +69,11 @@ conda activate openvla-oft
 cd /path/to/openvla-oft
 
 python -m experiments.robot.capra.pipelines.run_capra_eval \
-  --benchmark_mode safelibero \
+  --benchmark_mode safelibero_real \
   --safelibero_root vlsa-aegis/safelibero \
   --task_suite_name safelibero_spatial \
   --safety_level I \
-  --output_path tmp/capra/eval_adapter_safelibero.json
+  --output_path tmp/capra/eval_metrics_v1.json
 ```
 
 ## 6. 显存不足或内存飙升

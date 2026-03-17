@@ -1,6 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# 参数1：输出监督文件路径（默认写到 tmp/capra）
-OUTPUT_PATH="${1:-tmp/capra/mined_v1.jsonl}"
-python -m experiments.robot.capra.pipelines.run_capra_mining --output_path "${OUTPUT_PATH}"
+# 参数：
+# 1 episodes_path（rollout episode JSONL）
+# 2 env_factory（module:function）
+# 3 output_path（可选，默认 tmp/capra/mined_v1.jsonl）
+EPISODES_PATH="${1:-}"
+ENV_FACTORY="${2:-}"
+OUTPUT_PATH="${3:-tmp/capra/mined_v1.jsonl}"
+
+if [[ -z "${EPISODES_PATH}" || -z "${ENV_FACTORY}" ]]; then
+	echo "Usage: bash scripts/capra/mine/mine_capra_v1.sh <episodes_path> <env_factory> [output_path]"
+	echo "Example: bash scripts/capra/mine/mine_capra_v1.sh tmp/capra/episodes.jsonl my_pkg.env_factory:build_env tmp/capra/mined_v1.jsonl"
+	exit 1
+fi
+
+python -m experiments.robot.capra.pipelines.run_capra_mining \
+	--episodes_path "${EPISODES_PATH}" \
+	--env_factory "${ENV_FACTORY}" \
+	--output_path "${OUTPUT_PATH}"

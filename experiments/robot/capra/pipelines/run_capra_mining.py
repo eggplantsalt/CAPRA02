@@ -1,16 +1,22 @@
-"""CAPRA v1 小规模监督挖掘入口。
+"""CAPRA v1 监督数据生产入口（真实路径）。
 
-这个文件提供命令行可调用的 mining pipeline，
-当前默认使用 demo 环境进行链路烟雾验证，用于：
-1. 验证挖掘流程可跑通。
-2. 生成 JSONL 监督样本供后续训练使用。
+主路径：
+1. 从外部 rollout episodes JSONL 读取待挖掘数据。
+2. 通过外部 env_factory 为每个 episode 构建真实环境。
+3. 调用 core.mining 产出可直接用于训练查表的 supervision JSONL。
+
+说明：
+- demo/debug 路径仅用于排障，不作为默认行为。
+- --debug_summary_path 仅输出 debug-only 诊断文件，不参与训练主路径。
 """
 
 from __future__ import annotations
 
 import argparse
+import importlib
+import json
 from pathlib import Path
-from typing import Any, Dict, Iterable, List
+from typing import Any, Callable, Dict, Iterable, List, Optional
 
 import numpy as np
 
@@ -19,20 +25,104 @@ from experiments.robot.capra.core.mining import MiningConfigV1, mine_episode_v1
 from experiments.robot.capra.io.supervision_io import SupervisionRecord, write_supervision_jsonl
 
 
+def _to_numpy_nested(value: Any) -> Any:
+    if isinstance(value, list):
+        try:
+            return np.asarray(value, dtype=np.float32)
+        except (TypeError, ValueError):
+            return [_to_numpy_nested(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _to_numpy_nested(v) for k, v in value.items()}
+    return value
+
+
+def load_episodes_jsonl(path: str) -> List[Dict[str, Any]]:
+    """读取 rollout episode JSONL（每行一个 episode）。"""
+    rows: List[Dict[str, Any]] = []
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"episodes_path 不存在: {path}")
+
+    with p.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            raw = json.loads(line)
+            timesteps = []
+            for step in raw.get("timesteps", []):
+                step_copy = dict(step)
+                step_copy["base_action"] = np.asarray(step_copy["base_action"], dtype=np.float32)
+                if "observation_input" in step_copy:
+                    step_copy["observation_input"] = _to_numpy_nested(step_copy["observation_input"])
+                if "info_before" in step_copy:
+                    step_copy["info_before"] = _to_numpy_nested(step_copy["info_before"])
+                timesteps.append(step_copy)
+            raw["timesteps"] = timesteps
+            rows.append(raw)
+
+    return rows
+
+
+def resolve_env_factory(factory_spec: str) -> Callable[[Dict[str, Any]], Any]:
+    """解析 `module:function` 形式的环境工厂。"""
+    if ":" not in factory_spec:
+        raise ValueError("env_factory 必须是 module:function 形式")
+
+    module_name, func_name = factory_spec.split(":", 1)
+    module = importlib.import_module(module_name)
+    factory = getattr(module, func_name, None)
+    if not callable(factory):
+        raise ValueError(f"env_factory 不可调用: {factory_spec}")
+    return factory
+
+
+def build_mining_debug_summary(records: List[SupervisionRecord]) -> Dict[str, Any]:
+    """生成调试汇总（不参与训练主路径逻辑）。"""
+    if not records:
+        return {
+            "num_records": 0,
+            "mean_weight": 0.0,
+            "max_weight": 0.0,
+            "num_unique_sample_keys": 0,
+        }
+
+    weights = [float(r.weight) for r in records]
+    return {
+        "num_records": int(len(records)),
+        "mean_weight": float(sum(weights) / len(weights)),
+        "max_weight": float(max(weights)),
+        "num_unique_sample_keys": int(len(set(r.sample_key for r in records))),
+    }
+
+
+def maybe_write_debug_summary(records: List[SupervisionRecord], debug_summary_path: Optional[str]) -> None:
+    """按需写入 debug summary；默认不写。"""
+    if not debug_summary_path:
+        return
+
+    summary = build_mining_debug_summary(records)
+    path = Path(debug_summary_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2, ensure_ascii=True)
+
+
 # 功能：驱动 episode 循环并汇总所有监督记录。
-# 用法：可被 CLI 入口调用，也可被测试直接调用。
+# 用法：传入真实 env_adapter 与 rollout episodes。
 def run_capra_mining(
     env_adapter: EnvAdapter,
     episodes: Iterable[Dict[str, Any]],
     output_path: str,
     cfg: MiningConfigV1 | None = None,
 ) -> List[SupervisionRecord]:
-    """在一个小规模 episode 集合上执行 CAPRA 监督挖掘。"""
+    """在 episode 集合上执行 CAPRA 监督挖掘并写盘。"""
     config = cfg or MiningConfigV1()
     all_records: List[SupervisionRecord] = []
 
     for episode_idx, ep in enumerate(episodes):
         instruction = str(ep.get("instruction", ""))
+        dataset_name = str(ep.get("dataset_name", "")).strip().lower()
         timesteps = ep.get("timesteps", [])
         records = mine_episode_v1(
             env_adapter=env_adapter,
@@ -40,6 +130,7 @@ def run_capra_mining(
             timesteps=timesteps,
             cfg=config,
             episode_idx=episode_idx,
+            dataset_name=dataset_name,
         )
         all_records.extend(records)
 
@@ -47,115 +138,86 @@ def run_capra_mining(
     return all_records
 
 
-class _DemoSim:
-    """用于烟雾验证的最小模拟器对象。"""
+def run_capra_mining_from_episodes_file(
+    episodes_path: str,
+    env_factory: Callable[[Dict[str, Any]], Any],
+    output_path: str,
+    cfg: MiningConfigV1 | None = None,
+    debug_summary_path: Optional[str] = None,
+) -> List[SupervisionRecord]:
+    """真实主路径：episodes JSONL + env_factory -> supervision JSONL。"""
+    episodes = load_episodes_jsonl(episodes_path)
+    config = cfg or MiningConfigV1()
 
-    # 功能：初始化演示仿真器状态。
-    # 用法：_DemoEnv 构造时自动创建。
-    def __init__(self) -> None:
-        self.state = np.array([0.0, 0.0], dtype=np.float32)
+    all_records: List[SupervisionRecord] = []
+    for episode_idx, ep in enumerate(episodes):
+        env = env_factory(ep)
+        env_adapter = EnvAdapter(env)
+        instruction = str(ep.get("instruction", ""))
+        dataset_name = str(ep.get("dataset_name", "")).strip().lower()
+        records = mine_episode_v1(
+            env_adapter=env_adapter,
+            instruction=instruction,
+            timesteps=ep.get("timesteps", []),
+            cfg=config,
+            episode_idx=episode_idx,
+            dataset_name=dataset_name,
+        )
+        all_records.extend(records)
 
-    # 功能：读取当前仿真状态向量。
-    # 用法：评估前保存状态与环境观测构造时调用。
-    def get_state(self):
-        return self.state.copy()
-
-    # 功能：从扁平状态向量恢复仿真状态。
-    # 用法：反事实回滚或 step 更新后写回状态。
-    def set_state_from_flattened(self, state):
-        self.state = np.asarray(state, dtype=np.float32).copy()
-
-    # 功能：提供与真实 sim.data 类似的数据接口。
-    # 用法：让 EnvAdapter/state_api 在 demo 环境下可直接复用。
-    @property
-    def data(self):
-        class _Data:
-            qvel = np.array([0.1, 0.0], dtype=np.float32)
-            ncon = 0
-
-        return _Data()
-
-    # 功能：兼容 MuJoCo sim.forward 接口。
-    # 用法：EnvAdapter 恢复状态后可安全调用。
-    def forward(self):
-        return None
+    write_supervision_jsonl(all_records, output_path)
+    maybe_write_debug_summary(all_records, debug_summary_path)
+    return all_records
 
 
-class _DemoEnv:
-    """用于烟雾验证的最小环境对象。"""
-
-    # 功能：初始化 demo 环境和目标位置。
-    # 用法：main 中构造 EnvAdapter 前调用。
-    def __init__(self) -> None:
-        self.sim = _DemoSim()
-        self.target = 1.0
-
-    # 功能：导出与训练环境同构的观测字典。
-    # 用法：挖掘和评估流程读取当前状态时调用。
-    def get_observation(self):
-        eef_x, obj_x = self.sim.get_state()
-        return {
-            "robot0_eef_pos": np.array([eef_x, 0.0, 0.0], dtype=np.float32),
-            "robot0_eef_quat": np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32),
-            "robot0_joint_pos": np.array([eef_x], dtype=np.float32),
-            "robot0_gripper_qpos": np.array([0.5], dtype=np.float32),
-            "object_positions": {"obj": np.array([obj_x, 0.0, 0.0], dtype=np.float32)},
-        }
-
-    # 功能：执行一步简化动力学并返回 step 四元组。
-    # 用法：local evaluator 在 demo 模式下调用。
-    def step(self, action):
-        action = np.asarray(action, dtype=np.float32)
-        eef_x, obj_x = self.sim.get_state()
-        eef_x = eef_x + float(action[0])
-        obj_x = obj_x + max(float(action[0]), 0.0) * 2.0
-        self.sim.set_state_from_flattened([eef_x, obj_x])
-        obs = self.get_observation()
-        info = {
-            "target_dist": abs(self.target - eef_x),
-            "object_positions": {"obj": np.array([obj_x, 0.0, 0.0], dtype=np.float32)},
-            "toppled": False,
-            "support_broken": False,
-            "unrecoverable": False,
-        }
-        return obs, 0.0, False, info
-
-
-    # 功能：构建最小可运行的演示 episode 列表。
-    # 用法：main 默认使用该数据做一轮 smoke mining。
-def _build_demo_episodes() -> List[Dict[str, Any]]:
-    """构造演示用 episode 数据。"""
-
-    return [
-        {
-            "instruction": "move near target while minimizing disturbance",
-            "timesteps": [
-                {
-                    "base_action": np.array([[0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]], dtype=np.float32),
-                    "info_before": {"target_dist": 1.0},
-                }
-            ],
-        }
-    ]
-
-
-# 功能：解析命令行参数并执行一轮 demo 挖掘。
-# 用法：python -m experiments.robot.capra.pipelines.run_capra_mining --output_path ...
 def main() -> None:
-    """命令行入口：运行 demo 挖掘并输出 JSONL。"""
-
-    parser = argparse.ArgumentParser(description="Run small-scale CAPRA v1 supervision mining")
+    """命令行入口：默认真实数据生产路径。"""
+    parser = argparse.ArgumentParser(description="Run CAPRA supervision mining on rollout episodes")
+    parser.add_argument(
+        "--episodes_path",
+        type=str,
+        required=True,
+        help="Rollout episodes JSONL path (one episode per line)",
+    )
+    parser.add_argument(
+        "--env_factory",
+        type=str,
+        required=True,
+        help="Environment factory spec: module:function",
+    )
     parser.add_argument(
         "--output_path",
         type=str,
         default=str(Path("tmp") / "capra" / "mined_v1.jsonl"),
-        help="Path to output JSONL supervision records",
+        help="Path to output supervision JSONL",
     )
+    parser.add_argument(
+        "--debug_summary_path",
+        type=str,
+        default="",
+        help="Optional debug summary JSON path (non-training artifact)",
+    )
+    parser.add_argument("--epsilon_p", type=float, default=0.05)
+    parser.add_argument("--delta_min", type=float, default=1e-6)
+    parser.add_argument("--w_max", type=float, default=5.0)
+    parser.add_argument("--short_horizon_steps", type=int, default=1)
     args = parser.parse_args()
 
-    env_adapter = EnvAdapter(_DemoEnv())
-    episodes = _build_demo_episodes()
-    records = run_capra_mining(env_adapter=env_adapter, episodes=episodes, output_path=args.output_path)
+    cfg = MiningConfigV1(
+        epsilon_p=float(args.epsilon_p),
+        delta_min=float(args.delta_min),
+        w_max=float(args.w_max),
+        short_horizon_steps=int(args.short_horizon_steps),
+    )
+
+    factory = resolve_env_factory(args.env_factory)
+    records = run_capra_mining_from_episodes_file(
+        episodes_path=args.episodes_path,
+        env_factory=factory,
+        output_path=args.output_path,
+        cfg=cfg,
+        debug_summary_path=args.debug_summary_path or None,
+    )
     print(f"Wrote {len(records)} records to {args.output_path}")
 
 

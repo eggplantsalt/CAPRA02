@@ -67,39 +67,53 @@ python experiments/robot/libero/run_libero_eval.py \
 
 ## 3. CAPRA 最小可用验证
 
-### 3.1 监督挖掘（demo 环境）
+### 3.1 监督挖掘（真实输入）
 
 ```bash
 conda activate openvla-oft
 cd /path/to/openvla-oft
 
-bash scripts/capra/mine/mine_capra_v1.sh tmp/capra/mined_v1.jsonl
+bash scripts/capra/mine/mine_capra_v1.sh \
+  /path/to/episodes.jsonl \
+  your_pkg.your_env_factory:build_env \
+  tmp/capra/mined_v1.jsonl
 ```
 
-### 3.2 CAPRA 训练（tiny smoke）
+### 3.2 CAPRA 训练（真实 overlay）
 
 ```bash
 conda activate openvla-oft
 cd /path/to/openvla-oft
 
 python vla-scripts/finetune_capra.py \
+  --vla_path openvla/openvla-7b \
+  --data_root_dir /path/to/rlds \
+  --dataset_name libero_spatial_no_noops \
+  --run_root_dir /path/to/runs \
   --supervision_path tmp/capra/mined_v1.jsonl \
-  --steps 5 \
+  --max_steps 5 \
   --lambda_capra 1.0 \
-  --lr 1e-4
+  --learning_rate 5e-4
 ```
 
-### 3.3 CAPRA 评测（tiny 指标聚合）
+### 3.3 CAPRA 评测（SafeLIBERO 主路径）
 
 ```bash
 conda activate openvla-oft
 cd /path/to/openvla-oft
 
 bash scripts/capra/eval/eval_capra_v1.sh \
-  tmp/capra/mined_v1.jsonl \
   tmp/capra/eval_metrics_v1.json \
-  tiny
+  safelibero_spatial \
+  I \
+  vlsa-aegis/safelibero
 ```
+
+说明：
+
+- `run_capra_eval.py` 默认模式是 `safelibero_real`。
+  - `safelibero_real` 当前输出环境可用性统计（如 `adapter_ok`、`num_tasks`），用于确认评测环境入口已接通。
+- 如需基于 OpenVLA checkpoint 的 LIBERO 评测，可显式使用 `--benchmark_mode libero_real`。
 
 ## 4. DeepSpeed 最小模板（CAPRA）
 
@@ -110,9 +124,12 @@ cd /path/to/openvla-oft
 export NUM_GPUS=1
 bash scripts/capra/train/finetune_capra_v1_deepspeed.sh \
   tmp/capra/mined_v1.jsonl \
+  openvla/openvla-7b \
+  /path/to/rlds \
+  libero_spatial_no_noops \
+  /path/to/runs \
   200 \
-  1.0 \
-  1e-4
+  1.0
 ```
 
 如果你有自定义 deepspeed 配置文件：
@@ -124,8 +141,12 @@ cd /path/to/openvla-oft
 export NUM_GPUS=2
 bash scripts/capra/train/finetune_capra_v1_deepspeed.sh \
   tmp/capra/mined_v1.jsonl \
+  openvla/openvla-7b \
+  /path/to/rlds \
+  libero_spatial_no_noops \
+  /path/to/runs \
   500 \
   1.0 \
-  1e-4 \
+  5e-4 \
   /path/to/deepspeed_config.json
 ```

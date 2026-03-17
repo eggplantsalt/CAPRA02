@@ -1,5 +1,7 @@
 # CAPRA Plan (Phase 0)
 
+> 历史归档说明：本文件是早期阶段计划，不代表当前仓库已落地实现细节。
+
 ## Scope
 This document records the Phase 0 repository survey and the minimal-intrusion CAPRA-v1 overlay plan on top of upstream openvla-oft.
 

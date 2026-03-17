@@ -1,5 +1,7 @@
 # CAPRA Context (Persistent Project Notes)
 
+> 历史归档说明：本文件记录早期设计语义，仅用于追溯，不代表当前代码主路径实现状态。
+
 ## Project Identity
 - Target: intrinsic safety for manipulation-only VLA.
 - Core object: local avoidable-risk regret.

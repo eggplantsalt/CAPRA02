@@ -259,6 +259,44 @@ Remaining risks/blockers:
 Next step:
 - CAPRA v1 staged pipeline is now end-to-end closed on scaffold + smoke path.
 
+## Phase Audit - Realization Gap (Engineering vs Smoke)
+Status: completed
+
+Completed in this phase:
+- 对以下范围完成逐文件审计并分类（A/B/C/D）：
+  - vla-scripts/finetune_capra.py
+  - experiments/robot/capra/
+  - scripts/capra/
+  - tests/capra/
+- 先行核对上游真实基线：
+  - vla-scripts/finetune.py
+  - experiments/robot/libero/run_libero_eval.py
+- 产出审计报告：
+  - docs/CAPRA_REALIZATION_AUDIT.md
+
+当前仓库中属于 smoke test 的路径（不是论文工程实现）:
+- vla-scripts/finetune_capra.py（tiny 线性模型 + JSONL-only 训练回路）
+- experiments/robot/capra/pipelines/run_capra_mining.py（_DemoEnv/_DemoSim）
+- experiments/robot/capra/pipelines/run_capra_eval.py（tiny/custom_split/safelibero smoke）
+- experiments/robot/capra/adapters/benchmark_adapters.py（探活/白名单校验）
+- scripts/capra/mine/mine_capra_v1.sh（调用 demo mining）
+- scripts/capra/train/finetune_capra_v1_deepspeed.sh（名称像真实训练，实际连到 tiny 路径）
+- scripts/capra/eval/eval_capra_v1.sh（固定 --tiny）
+- tests/capra/*（全部测试 harness）
+
+为什么它们不能算论文工程实现：
+- 未加载真实 OpenVLA-OFT 模型进行 CAPRA 训练。
+- 未复用上游 finetune.py 的 RLDS 主训练骨架（DDP/LoRA/真实 batch 流）。
+- 未读取真实 LIBERO/RLDS 主数据流作为 anchor/task 来源。
+- anchor_loss 当前来自 supervision JSONL 的 base_action，而不是主任务 batch。
+- supervision JSONL 当前是唯一训练源，而非附加 sparse supervision。
+
+下一阶段最应优先替换的路径（优先级从高到低）：
+1. vla-scripts/finetune_capra.py：改为 overlay 到 vla-scripts/finetune.py 主循环。
+2. scripts/capra/train/finetune_capra_v1_deepspeed.sh：改为调用真实训练入口，并避免误导命名。
+3. experiments/robot/capra/pipelines/run_capra_mining.py：去掉 demo 环境默认路径，接真实 rollout 数据流。
+4. experiments/robot/capra/pipelines/run_capra_eval.py 与 scripts/capra/eval/eval_capra_v1.sh：拆分 real eval 与 smoke eval。
+
 ## Phase 6 - Thin Benchmark Adapters
 Status: completed
 
@@ -380,6 +418,45 @@ Completed in this phase:
 
 Tests run:
 - Not run in this phase (comment/documentation-level code readability update only).
+
+## Phase 10 - finetune_capra 真实入口重构
+Status: completed
+
+Completed in this phase:
+- 重构 vla-scripts/finetune_capra.py 为真实 OpenVLA-OFT overlay 训练入口。
+- 默认路径改为真实训练主路径（移除 toy/tiny 作为主实现）。
+- 训练主损失改为来自 RLDS 主数据流的 task_loss（通过上游 run_forward_pass）。
+- 接入 CAPRA supervision JSONL 作为附加 sparse supervision（命中样本才计算 capra_loss）。
+- 组合总损失：total_loss = task_loss + lambda_capra * capra_loss。
+- 接入真实 checkpoint 加载、RLDSDataset、checkpoint 保存路径。
+- DeepSpeed 分支改为挂接真实模型与真实训练循环（非 tiny 分支）。
+- 更新测试文件 tests/capra/test_finetune_capra_smoke.py：
+  - 校验 checkpoint 加载入口
+  - 校验主 batch collate 路径
+  - 校验 task_loss + capra_loss 组合语义
+
+Smoke path status (for this phase scope):
+- 已降级/移除主入口中的 tiny 主路径：
+  - _build_tiny_model（已不再作为主实现）
+  - run_tiny_capra_smoke（已不再作为主实现）
+- 仍待后续阶段处理的 smoke 路径：
+  - experiments/robot/capra/pipelines/run_capra_mining.py（demo env）
+  - experiments/robot/capra/pipelines/run_capra_eval.py（tiny/smoke）
+  - scripts/capra/mine/* 与 scripts/capra/eval/* 的默认 smoke 行为
+
+为什么当前阶段仍未等同“论文级全链路完成”:
+- 本阶段只重构了训练入口（finetune_capra）。
+- mining/eval 仍有历史 smoke 路径，需要下一阶段继续真实化。
+
+下一阶段最优先替换路径:
+1. experiments/robot/capra/pipelines/run_capra_mining.py（接真实 rollout 输入）
+2. experiments/robot/capra/pipelines/run_capra_eval.py（拆分 real eval 与 smoke eval）
+3. scripts/capra/train|mine|eval 脚本命名与默认行为去误导化
+
+Test notes:
+- pytest tests/capra/test_finetune_capra_smoke.py -q
+- 当前环境因第三方依赖版本冲突（transformers/huggingface-hub）导致真实导入受限，测试在该环境下按设计 skip；
+  测试逻辑本身已切换到“真实入口路径语义”而非 tiny fake model 语义。
 
 Static checks:
 - get_errors reports no editor errors in modified CAPRA files.

@@ -17,9 +17,9 @@
 - experiments/robot/capra/adapters/
 	- env_adapter.py：统一环境与 sim 访问
 	- state_api.py：obs-first, sim-backed 状态读取
-	- benchmark_adapters.py：SafeLIBERO 与 custom split 适配
+	- benchmark_adapters.py：SafeLIBERO 环境可用性校验与 custom split 白名单
 - experiments/robot/capra/core/
-	- proposals.py：局部动作候选生成
+	- proposals.py：prefix-local 模板候选生成（含 gripper/protected dims 保护）
 	- task_progress.py：progress-preserving gate
 	- footprint.py：footprint v1 计算
 	- local_evaluator.py：反事实短视界评估
@@ -32,7 +32,7 @@
 	- metrics.py：SPIR、EAR 与 episode 指标
 - experiments/robot/capra/pipelines/
 	- run_capra_mining.py：挖掘入口
-	- run_capra_eval.py：评测入口
+	- run_capra_eval.py：评测入口（默认 safelibero_real）
 
 ### 2.2 Shell 分层
 
@@ -70,3 +70,13 @@ python vla-scripts/finetune_capra.py --help
 # 评测
 python -m experiments.robot.capra.pipelines.run_capra_eval --help
 ```
+
+## 4. 主路径与调试路径
+
+- 主路径：
+	- 训练：`vla-scripts/finetune_capra.py`（RLDS task_loss + CAPRA 附加 supervision）
+	- 挖掘：`run_capra_mining.py`（episodes JSONL + env_factory）
+	- 评测：`run_capra_eval.py --benchmark_mode safelibero_real`（当前返回 SafeLIBERO 环境可用性统计）
+- debug/test-only：
+	- `debug_tiny`、`debug_custom_split`
+	- `tests/capra/*` 下单测与 smoke 测试

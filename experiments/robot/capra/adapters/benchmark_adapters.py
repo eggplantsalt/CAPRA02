@@ -1,8 +1,8 @@
 """CAPRA Phase 6 的轻量 benchmark 适配器。
 
-这个文件不实现完整 benchmark 训练/评测编排，只负责：
+这个文件不实现完整 benchmark rollout 评测，只负责：
 1. 生成上游 LIBERO 评测命令字符串。
-2. 对 SafeLIBERO 依赖与套件注册做烟雾检查。
+2. 对 SafeLIBERO 依赖与套件注册做环境可用性校验。
 3. 对 custom split 名称做白名单校验。
 """
 
@@ -41,10 +41,10 @@ def get_libero_utility_eval_command(pretrained_checkpoint: str, task_suite_name:
     )
 
 
-# 功能：快速检查 SafeLIBERO 是否已正确安装并可加载目标 suite。
-# 用法：不跑完整评测，只返回适配状态与样例任务信息。
+# 功能：检查 SafeLIBERO 是否已正确安装并可加载目标 suite。
+# 用法：供 safelibero_real 主路径做环境可用性检查；不计算策略 success_rate。
 def smoke_run_safelibero(config: SafeLiberoSmokeConfig) -> Dict[str, Any]:
-    """SafeLIBERO 烟雾检查：验证路径、注册表与套件构造是否可用。"""
+    """SafeLIBERO 环境校验：验证路径、注册表与套件构造是否可用。"""
     safety_level = str(config.safety_level).upper()
     if safety_level not in SUPPORTED_SAFELIBERO_LEVELS:
         return {

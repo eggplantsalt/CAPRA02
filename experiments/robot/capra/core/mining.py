@@ -15,7 +15,12 @@ import numpy as np
 from experiments.robot.capra.adapters.env_adapter import EnvAdapter
 from experiments.robot.capra.core.local_evaluator import evaluate_candidates_v1, summarise_candidate_results
 from experiments.robot.capra.core.proposals import ProposalConfig, build_local_proposals
-from experiments.robot.capra.io.supervision_io import SupervisionRecord
+from experiments.robot.capra.io.supervision_io import (
+    SupervisionRecord,
+    build_stable_sample_key,
+    compute_observation_fingerprint,
+    normalize_instruction,
+)
 
 
 @dataclass
@@ -70,6 +75,8 @@ def mine_one_timestep_v1(
     cfg: Optional[MiningConfigV1] = None,
     episode_idx: int = 0,
     step_idx: int = 0,
+    dataset_name: str = "",
+    source_uid: str = "",
     observation_input: Optional[Dict[str, Any]] = None,
     info_before: Optional[Dict[str, Any]] = None,
 ) -> Optional[SupervisionRecord]:
@@ -77,7 +84,12 @@ def mine_one_timestep_v1(
     config = cfg or MiningConfigV1()
     base_chunk = _to_chunk(base_action_chunk)
 
-    proposals = build_local_proposals(base_chunk, config=config.proposal_config, include_base=True)
+    # 候选生成主路径走 ProposalConfig（前缀级局部模板 + gripper 保护）。
+    proposals = build_local_proposals(
+        base_chunk,
+        config=config.proposal_config,
+        include_base=config.proposal_config.include_base,
+    )
     summary_obj = evaluate_candidates_v1(
         env_adapter=env_adapter,
         proposals=proposals,
@@ -106,12 +118,42 @@ def mine_one_timestep_v1(
     # 第一版权重采用 clip(局部风险差值, 0, w_max)。
     weight = float(np.clip(delta, 0.0, config.w_max))
 
+    frame_fingerprint = compute_observation_fingerprint(observation_input)
+    sample_key = build_stable_sample_key(
+        dataset_name=dataset_name,
+        instruction=instruction,
+        episode_idx=episode_idx,
+        step_idx=step_idx,
+        frame_fingerprint=frame_fingerprint,
+        source_uid=source_uid,
+    )
+    lookup_key = sample_key
+
     return SupervisionRecord(
+        sample_key=sample_key,
+        lookup_key=lookup_key,
         observation=_to_serializable_obs(observation_input),
         instruction=instruction,
         base_action=np.asarray(base_eval.action_chunk).tolist(),
         safer_action=np.asarray(safer_eval.action_chunk).tolist(),
         weight=weight,
+        align={
+            "dataset_name": str(dataset_name).strip().lower(),
+            "instruction_norm": normalize_instruction(instruction),
+            "episode_idx": int(episode_idx),
+            "step_idx": int(step_idx),
+            "frame_fingerprint": frame_fingerprint,
+            "source_uid": str(source_uid),
+        },
+        provenance={
+            "generator": "capra.core.mining.mine_one_timestep_v1",
+            "config": {
+                "epsilon_p": float(config.epsilon_p),
+                "delta_min": float(config.delta_min),
+                "w_max": float(config.w_max),
+                "short_horizon_steps": int(config.short_horizon_steps),
+            },
+        },
         candidate_stats={
             "summary": summary,
             "base_footprint": float(base_eval.footprint.total),
@@ -136,6 +178,7 @@ def mine_episode_v1(
     timesteps: Iterable[Dict[str, Any]],
     cfg: Optional[MiningConfigV1] = None,
     episode_idx: int = 0,
+    dataset_name: str = "",
 ) -> List[SupervisionRecord]:
     """遍历一个 episode 的多个时间步，收集所有有效 supervision。"""
     config = cfg or MiningConfigV1()
@@ -149,6 +192,8 @@ def mine_episode_v1(
             cfg=config,
             episode_idx=episode_idx,
             step_idx=step_idx,
+            dataset_name=str(step.get("dataset_name", dataset_name)),
+            source_uid=str(step.get("source_uid", "")),
             observation_input=step.get("observation_input"),
             info_before=step.get("info_before"),
         )

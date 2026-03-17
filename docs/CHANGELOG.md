@@ -50,3 +50,21 @@
 
 - 以上文档均基于当前真实代码入口与参数编写。
 - 每篇文档均提供可复制粘贴的命令模板（含 conda activate 与 cd）。
+
+## 2026-03-17（全量对齐更新）
+
+### 更新范围
+
+- 仅更新已有文档与已有 Python/脚本中文注释；未新增任何文档文件。
+
+### 对齐重点
+
+- proposals 主路径表述统一为 prefix-local templates（`speed_prefix` / `lift_prefix` / `retract_prefix` / `lift_then_go` / 可选 lateral）。
+- 明确 `gripper_index + protected_dims` 保护语义。
+- 明确 gaussian 候选与 whole-chunk 模板均为次级身份，不是默认主路径。
+- 评测文档与注释对齐到 `safelibero_real` 默认模式，并补充当前输出边界（环境可用性统计 vs rollout 成功率）。
+- 清理旧的 tiny/smoke 主路径误导描述，保留 debug/test-only 路径说明。
+
+### 备注
+
+- 归档目录 `docs/99_archive/` 保留历史文档，但已补充“历史归档、非当前实现”说明。
