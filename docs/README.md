@@ -11,11 +11,12 @@
 
 1. `docs/00_overview/PROJECT_MAP.md`
 2. `docs/01_quickstart/QUICKSTART.md`
-3. `docs/02_dataset/DATASET_RLDS.md`
-4. `docs/03_training/BASELINE_TRAINING.md`
-5. `docs/03_training/CAPRA_TRAINING.md`
-6. `docs/04_evaluation/EVALUATION_GUIDE.md`
-7. `docs/05_troubleshooting/TROUBLESHOOTING.md`
+3. `docs/01_quickstart/FULL_EXPERIMENT_PLAYBOOK.md`
+4. `docs/02_dataset/DATASET_RLDS.md`
+5. `docs/03_training/BASELINE_TRAINING.md`
+6. `docs/03_training/CAPRA_TRAINING.md`
+7. `docs/04_evaluation/EVALUATION_GUIDE.md`
+8. `docs/05_troubleshooting/TROUBLESHOOTING.md`
 
 ## 二、目录作用说明
 
